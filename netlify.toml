@@ -1,6 +1,7 @@
 [build]
+  base = "assistlana-frontend"
   command = "npm run build"
-  publish = ".next"
+  publish = "assistlana-frontend/.next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
