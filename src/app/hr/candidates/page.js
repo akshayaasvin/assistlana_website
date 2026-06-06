@@ -134,7 +134,7 @@ export default function HRCandidates() {
   if (loading) return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <HRSidebar user={user}/>
-      <div className="ml-0 md:ml-0 md:ml-56 flex-1 flex items-center justify-center">
+      <div className="ml-0 md:ml-0 md:ml-0 md:ml-56 flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#1253A4] border-t-transparent rounded-full animate-spin mx-auto mb-4"/>
           <div className="text-slate-500 font-semibold">Loading candidates from Supabase...</div>
@@ -146,7 +146,7 @@ export default function HRCandidates() {
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <HRSidebar user={user}/>
-      <div className="ml-0 md:ml-0 md:ml-56 flex-1">
+      <div className="ml-0 md:ml-0 md:ml-0 md:ml-56 flex-1">
 
         {/* ── Topbar ── */}
         <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
