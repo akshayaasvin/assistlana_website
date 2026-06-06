@@ -47,7 +47,7 @@ export default function HRAnalytics() {
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <HRSidebar user={user}/>
-      <div className="ml-56 flex-1">
+      <div className="ml-0 md:ml-0 md:ml-56 flex-1">
 
         {/* Topbar */}
         <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between sticky top-0 z-10">

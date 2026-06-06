@@ -131,7 +131,7 @@ export default function AdminSettings() {
       </div>
 
       {/* Main */}
-      <div className="ml-56 flex-1">
+      <div className="ml-0 md:ml-0 md:ml-56 flex-1">
         <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 sticky top-0 z-10">
           <div className="text-lg font-bold text-[#1E293B]">Admin Settings</div>
           <div className="text-xs text-slate-400">Manage your profile, scoring config and security</div>
