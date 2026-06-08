@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import HRSidebar from "@/components/hr/HRSidebar";
 import { supabase } from "@/lib/supabase";
 import { Upload, FileText, CheckCircle, Bell, Search, X } from "lucide-react";
+import { RECENT_UPLOADS } from "@/lib/mockData";
 
 const PARSE_STEPS = [
   { label:"Reading resume file",             icon:"📄" },
@@ -412,6 +413,34 @@ export default function HRUpload() {
                 </div>
               )}
             </div>
+            {/* Recent Uploads with timestamp */}
+            <div className="mt-6 bg-white rounded-2xl border border-[#E2E8F0] p-5">
+             <div className="font-bold text-[#1E293B] mb-4">📋 Recent Uploads & Applications</div>
+             <div className="space-y-3">
+               {[...saved, ...RECENT_UPLOADS.slice(0, 3)].map((c, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                 <div className="w-9 h-9 bg-[#1253A4] rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                   {(c.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+                </div>
+               <div className="flex-1 min-w-0">
+                 <div className="text-sm font-semibold text-[#1E293B] truncate">{c.name}</div>
+                 <div className="text-xs text-slate-400">
+                   {c.file || "Resume uploaded"} · {c.time || "Just now"}
+                 </div>
+               </div>
+               <div className="text-center flex-shrink-0">
+                 <div className={`text-sm font-bold ${
+                   (c.ai_score||c.score||0) >= 85 ? "text-green-600" :
+                   (c.ai_score||c.score||0) >= 70 ? "text-yellow-600" : "text-slate-400"
+                  }`}>
+                   {c.ai_score || c.score || 0}
+                 </div>
+                <div className="text-xs text-slate-400">Score</div>
+               </div>
+            </div>
+         ))}
+     </div>
+  </div>
 
             {/* RIGHT — AI Pipeline */}
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">

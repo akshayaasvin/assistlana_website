@@ -27,6 +27,8 @@ export default function CandidateResume() {
   const [steps,     setSteps]     = useState(PARSE_STEPS.map(s=>({...s,status:"idle"})));
   const [error,     setError]     = useState("");
   const [success,   setSuccess]   = useState("");
+  const [editing,   setEditing]   = useState(false);
+  const [editData,  setEditData]  = useState({});
 
   useEffect(() => {
     const stored = localStorage.getItem("candidate_user");
@@ -36,11 +38,9 @@ export default function CandidateResume() {
     loadCandidate(u);
   }, []);
 
-  // ── Load candidate from Supabase ──
   const loadCandidate = async (u) => {
     setLoading(true);
     try {
-      // Try email first
       if (u.email) {
         const { data } = await supabase
           .from("candidates")
@@ -49,7 +49,6 @@ export default function CandidateResume() {
           .maybeSingle();
         if (data) { setCandidate(data); setLoading(false); return; }
       }
-      // Try id
       if (u.id) {
         const { data } = await supabase
           .from("candidates")
@@ -65,7 +64,6 @@ export default function CandidateResume() {
     setLoading(false);
   };
 
-  // ── Animate steps ──
   const runSteps = async () => {
     setSteps(PARSE_STEPS.map(s=>({...s,status:"idle"})));
     for (let i = 0; i < PARSE_STEPS.length; i++) {
@@ -75,7 +73,21 @@ export default function CandidateResume() {
     }
   };
 
-  // ── Handle file upload ──
+  const handleSaveProfile = async () => {
+    const { data } = await supabase
+      .from("candidates")
+      .update(editData)
+      .eq("email", user.email)
+      .select()
+      .maybeSingle();
+    if (data) {
+      setCandidate(data);
+      setEditing(false);
+      setSuccess("✅ Profile updated!");
+      setTimeout(() => setSuccess(""), 3000);
+    }
+  };
+
   const handleUpload = async (file) => {
     if (!file || !user) return;
     setError(""); setSuccess("");
@@ -83,8 +95,7 @@ export default function CandidateResume() {
     setParsing(true); setNewScore(null);
 
     try {
-      // Step 1: Upload file to Supabase Storage
-      const fileName  = `${Date.now()}_${file.name.replace(/\s/g,"_")}`;
+      const fileName = `${Date.now()}_${file.name.replace(/\s/g,"_")}`;
       const { error: uploadErr } = await supabase.storage
         .from("resumes")
         .upload(fileName, file, { upsert: true });
@@ -92,43 +103,32 @@ export default function CandidateResume() {
       const resumeUrl = uploadErr ? "" :
         supabase.storage.from("resumes").getPublicUrl(fileName).data.publicUrl;
 
-      // Step 2: Check backend
       const backendUp = await fetch("http://localhost:8000/api/health")
         .then(r => r.ok).catch(() => false);
 
       let finalCandidate = null;
 
       if (backendUp) {
-        // ── Real AI parsing — pass candidate email so backend UPDATES ──
         const stepPromise = runSteps();
-
         const formData = new FormData();
         formData.append("file", file);
-
-        // Pass the email as query param so backend updates existing row
         const url = `http://localhost:8000/api/resume/parse-and-save?candidate_email=${encodeURIComponent(user.email)}`;
-
         const res     = await fetch(url, { method:"POST", body: formData });
         const apiData = await res.json();
         await stepPromise;
 
         if (apiData.success && apiData.candidate) {
-          // Also update resume_url since backend doesn't know it
           const { data: withUrl } = await supabase
             .from("candidates")
             .update({ resume_url: resumeUrl })
             .eq("email", user.email)
             .select()
             .maybeSingle();
-
           finalCandidate = withUrl || apiData.candidate;
         }
-
       } else {
-        // ── Fallback simulation ──
         await runSteps();
         const newAI = Math.min(100, (candidate?.ai_score || 55) + Math.floor(Math.random()*12)+5);
-
         const { data: updated } = await supabase
           .from("candidates")
           .update({
@@ -140,17 +140,14 @@ export default function CandidateResume() {
           .eq("email", user.email)
           .select()
           .maybeSingle();
-
         finalCandidate = updated;
       }
 
-      // Step 3: Update state
       if (finalCandidate) {
         setCandidate(finalCandidate);
         setNewScore(finalCandidate.ai_score);
         setSuccess("✅ Resume uploaded and profile updated!");
       } else {
-        // Last resort: reload from DB
         await loadCandidate(user);
         setSuccess("✅ Resume uploaded!");
       }
@@ -161,7 +158,6 @@ export default function CandidateResume() {
     setParsing(false);
   };
 
-  // ── Loading screen ──
   if (loading) return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <div className="w-56 bg-[#0B1D3A] min-h-screen flex-shrink-0"/>
@@ -179,15 +175,12 @@ export default function CandidateResume() {
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <CandidateSidebar user={user}/>
-      <div className="ml-0 md:ml-0 md:ml-0 md:ml-56 flex-1">
+      <div className="ml-0 md:ml-56 flex-1">
 
-        {/* Topbar */}
         <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
           <div>
             <div className="text-lg font-bold text-[#1E293B]">My Resume</div>
-            <div className="text-xs text-slate-400">
-              Upload resume · AI extracts real data · score updates instantly
-            </div>
+            <div className="text-xs text-slate-400">Upload resume · AI extracts real data · score updates instantly</div>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => loadCandidate(user)}
@@ -201,7 +194,6 @@ export default function CandidateResume() {
         </div>
 
         <div className="p-8">
-
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-5 text-sm font-medium">
               {success}
@@ -212,26 +204,19 @@ export default function CandidateResume() {
               ⚠️ {error}
             </div>
           )}
-
           {!candidate && (
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl px-4 py-3 mb-5 text-sm">
-              ⚠️ No profile found for <strong>{user?.email}</strong>.
-              Upload your resume below to build your profile.
+              ⚠️ No profile found for <strong>{user?.email}</strong>. Upload your resume below.
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-8">
-
-            {/* ── LEFT ── */}
             <div className="space-y-5">
-
-              {/* Profile Card */}
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
                 <div className="font-bold text-[#1E293B] mb-4">👤 My Profile</div>
 
                 {candidate ? (
                   <>
-                    {/* Header */}
                     <div className="flex items-center gap-4 mb-5 p-4 bg-[#F0FDF4] rounded-xl">
                       <div className="w-14 h-14 bg-[#10B981] rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
                         {(candidate.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
@@ -245,31 +230,62 @@ export default function CandidateResume() {
                         <div className={`text-4xl font-bold ${
                           (candidate.ai_score||0)>=80 ? "text-green-600" :
                           (candidate.ai_score||0)>=60 ? "text-yellow-600" : "text-slate-400"
-                        }`}>
-                          {candidate.ai_score || 0}
-                        </div>
+                        }`}>{candidate.ai_score || 0}</div>
                         <div className="text-xs text-slate-400">AI Score</div>
                       </div>
                     </div>
 
-                    {/* Info grid */}
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      {[
-                        ["📍 Location",   candidate.location                    || "Not set" ],
-                        ["💼 Experience", (candidate.experience_years||"—")+" yrs"          ],
-                        ["🎓 Education",  candidate.education                   || "Not set" ],
-                        ["🎯 JD Match",   (candidate.jd_match||0)+"%"                       ],
-                        ["🎂 Age",        candidate.age                         || "—"       ],
-                        ["📊 Status",     candidate.status                      || "Pending" ],
-                      ].map(([l,v],i) => (
-                        <div key={i} className="bg-[#F8FAFC] rounded-xl p-3">
-                          <div className="text-xs text-slate-400 mb-0.5">{l}</div>
-                          <div className="text-sm font-bold text-[#1E293B]">{v}</div>
+                    {editing ? (
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {[
+                          ["Location",         "location"        ],
+                          ["Experience (yrs)", "experience_years"],
+                          ["Education",        "education"       ],
+                          ["Age",              "age"             ],
+                        ].map(([label, key]) => (
+                          <div key={key} className="bg-[#F8FAFC] rounded-xl p-3">
+                            <div className="text-xs text-slate-400 mb-1">{label}</div>
+                            <input
+                              defaultValue={candidate[key] || ""}
+                              onChange={e => setEditData(p => ({...p, [key]: e.target.value}))}
+                              className="w-full text-sm font-bold text-[#1E293B] bg-white border border-[#E2E8F0] rounded-lg px-2 py-1 outline-none"/>
+                          </div>
+                        ))}
+                        <div className="col-span-2 flex gap-2 mt-1">
+                          <button onClick={handleSaveProfile}
+                            className="flex-1 bg-[#10B981] text-white py-2 rounded-xl text-sm font-semibold">
+                            Save Changes ✅
+                          </button>
+                          <button onClick={() => setEditing(false)}
+                            className="flex-1 bg-[#F1F5F9] text-slate-600 py-2 rounded-xl text-sm font-semibold">
+                            Cancel
+                          </button>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {[
+                          ["📍 Location",   candidate.location                     || "Not set"],
+                          ["💼 Experience", (candidate.experience_years||"—")+" yrs"           ],
+                          ["🎓 Education",  candidate.education                    || "Not set"],
+                          ["🎯 JD Match",   (candidate.jd_match||0)+"%"                       ],
+                          ["🎂 Age",        candidate.age                          || "—"      ],
+                          ["📊 Status",     candidate.status                       || "Pending"],
+                        ].map(([l,v],i) => (
+                          <div key={i} className="bg-[#F8FAFC] rounded-xl p-3">
+                            <div className="text-xs text-slate-400 mb-0.5">{l}</div>
+                            <div className="text-sm font-bold text-[#1E293B]">{v}</div>
+                          </div>
+                        ))}
+                        <div className="col-span-2">
+                          <button onClick={() => { setEditing(true); setEditData({}); }}
+                            className="w-full bg-[#EFF6FF] text-[#1253A4] py-2 rounded-xl text-sm font-semibold hover:bg-[#DBEAFE] transition-all">
+                            ✏️ Edit Profile
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
-                    {/* Skills */}
                     {candidate.skills && candidate.skills.length > 0 && (
                       <div className="mb-4">
                         <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">
@@ -285,7 +301,6 @@ export default function CandidateResume() {
                       </div>
                     )}
 
-                    {/* Score breakdown */}
                     {(candidate.ai_score||0) > 0 && (
                       <div className="border-t border-[#F1F5F9] pt-4">
                         <div className="text-xs font-bold text-slate-400 mb-3 uppercase">Score Breakdown</div>
@@ -318,12 +333,10 @@ export default function CandidateResume() {
                 )}
               </div>
 
-              {/* Upload Card */}
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
                 <div className="font-bold text-[#1E293B] mb-4">
                   ⬆️ {candidate?.resume_url ? "Update My Resume" : "Upload My Resume"}
                 </div>
-
                 <div
                   onClick={() => !parsing && fileRef.current.click()}
                   className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
@@ -339,7 +352,6 @@ export default function CandidateResume() {
                   <div className="text-xs text-slate-400">PDF or DOCX · Max 10MB</div>
                 </div>
 
-                {/* Uploaded file status */}
                 {uploaded && (
                   <div className={`mt-4 flex items-center gap-3 p-3 rounded-xl border ${
                     newScore ? "bg-green-50 border-green-200" : "bg-[#F0FDF4] border-[#A7F3D0]"
@@ -349,12 +361,11 @@ export default function CandidateResume() {
                       <div className="text-sm font-semibold text-[#1E293B] truncate">{uploaded.name}</div>
                       <div className="text-xs text-slate-400">{uploaded.size}</div>
                     </div>
-                    {parsing   && <div className="w-5 h-5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin flex-shrink-0"/>}
+                    {parsing && <div className="w-5 h-5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin flex-shrink-0"/>}
                     {!parsing && newScore && <CheckCircle size={18} className="text-[#10B981] flex-shrink-0"/>}
                   </div>
                 )}
 
-                {/* Parse steps */}
                 {(parsing || newScore) && (
                   <div className="mt-4 space-y-2">
                     {steps.map((step,i) => (
@@ -379,7 +390,6 @@ export default function CandidateResume() {
                   </div>
                 )}
 
-                {/* Score updated banner */}
                 {newScore && (
                   <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
                     <div className="text-sm font-bold text-green-700 mb-1">🎉 Profile Updated!</div>
@@ -391,16 +401,13 @@ export default function CandidateResume() {
               </div>
             </div>
 
-            {/* ── RIGHT ── */}
             <div className="space-y-5">
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
                 <div className="flex items-center gap-2 font-bold text-[#1E293B] mb-4">
                   <Lightbulb size={18} className="text-[#F59E0B]"/>
                   AI Resume Suggestions
                 </div>
-                <p className="text-sm text-slate-500 mb-4">
-                  Follow these tips to improve your score:
-                </p>
+                <p className="text-sm text-slate-500 mb-4">Follow these tips to improve your score:</p>
                 <div className="space-y-3">
                   {AI_SUGGESTIONS.map((s,i) => (
                     <div key={i} className="flex items-start gap-3 p-3 bg-[#FFFBEB] rounded-xl border border-[#FDE68A]">
@@ -415,7 +422,7 @@ export default function CandidateResume() {
             </div>
           </div>
         </div>
-      </div>``
+      </div>
     </div>
   );
 }

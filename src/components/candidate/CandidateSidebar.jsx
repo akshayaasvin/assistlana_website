@@ -1,13 +1,14 @@
 "use client";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { LayoutDashboard, Briefcase, FileText, ClipboardList, LogOut, Brain, Menu, X } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, ClipboardList, LogOut, Brain, Menu, X, Settings } from "lucide-react";
 
 const NAV = [
   { label:"Dashboard",    icon: LayoutDashboard, href:"/candidate/dashboard"    },
   { label:"Browse Jobs",  icon: Briefcase,       href:"/candidate/jobs"         },
   { label:"My Resume",    icon: FileText,        href:"/candidate/resume"       },
   { label:"Applications", icon: ClipboardList,   href:"/candidate/applications" },
+  { label:"Settings",     icon: Settings,        href:"/candidate/settings"     },
 ];
 
 export default function CandidateSidebar({ user }) {

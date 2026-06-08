@@ -127,3 +127,9 @@ export const AI_SUGGESTIONS = [
   "Add links to GitHub projects or portfolio",
   "Use action verbs: Built, Developed, Optimized, Led",
 ];
+export const RECENT_UPLOADS = [
+  { name:"Priya Rajan",   file:"Priya_Rajan_Resume.pdf",    time:"2 mins ago",  score:92, email:"priya@email.com"   },
+  { name:"Arjun Mehta",   file:"Arjun_Mehta_CV.pdf",        time:"15 mins ago", score:88, email:"arjun@email.com"   },
+  { name:"Sneha Patel",   file:"Sneha_Patel_Portfolio.pdf", time:"1 hour ago",  score:85, email:"sneha@email.com"   },
+  { name:"Karthik S",     file:"Karthik_Resume.pdf",        time:"3 hours ago", score:79, email:"karthik@email.com" },
+];
