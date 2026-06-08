@@ -35,13 +35,16 @@ export default function HRJobs() {
     setTimeout(() => setSuccess(""), 4000);
   };
 
+  const handleDelete = (index) => {
+    setJobs(prev => prev.filter((_, i) => i !== index));
+  };
 
   if (!user) return null;
 
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <HRSidebar user={user}/>
-      <div className="ml-0 md:ml-0 md:ml-0 md:ml-56 flex-1">
+      <div className="ml-0 md:ml-56 flex-1">
         <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
           <div>
             <div className="text-lg font-bold text-[#1E293B]">Job Descriptions</div>
@@ -68,7 +71,6 @@ export default function HRJobs() {
               {success}
             </div>
           )}
-
 
           <div className="grid grid-cols-3 gap-5">
             {jobs.map((job,i) => (
@@ -101,9 +103,14 @@ export default function HRJobs() {
                     <div className="text-xs text-slate-400">Shortlisted</div>
                   </div>
                 </div>
+
                 <button onClick={() => router.push(`/hr/jobs/matches?job=${i}`)}
-                        className="w-full bg-[#1253A4] text-white py-2 rounded-xl text-xs font-semibold hover:bg-[#0d47a1] transition-all">
-                        View Matches →
+                  className="w-full bg-[#1253A4] text-white py-2 rounded-xl text-xs font-semibold hover:bg-[#0d47a1] transition-all">
+                  View Matches →
+                </button>
+                <button onClick={() => handleDelete(i)}
+                  className="w-full mt-2 bg-red-50 text-red-500 py-2 rounded-xl text-xs font-semibold hover:bg-red-100 transition-all">
+                  🗑️ Delete Job
                 </button>
               </div>
             ))}
