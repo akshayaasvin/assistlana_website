@@ -415,7 +415,7 @@ export default function CandidateResume() {
             </div>
           </div>
         </div>
-      </div>
+      </div>``
     </div>
   );
 }
