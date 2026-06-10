@@ -103,7 +103,7 @@ export default function CandidateResume() {
       const resumeUrl = uploadErr ? "" :
         supabase.storage.from("resumes").getPublicUrl(fileName).data.publicUrl;
 
-      const backendUp = await fetch("http://localhost:8000/api/health")
+      const backendUp = await fetch("https://assistlana-backend.onrender.com/api/health")
         .then(r => r.ok).catch(() => false);
 
       let finalCandidate = null;
@@ -112,7 +112,7 @@ export default function CandidateResume() {
         const stepPromise = runSteps();
         const formData = new FormData();
         formData.append("file", file);
-        const url = `http://localhost:8000/api/resume/parse-and-save?candidate_email=${encodeURIComponent(user.email)}`;
+        const url = `https://assistlana-backend.onrender.com/api/resume/parse-and-save?candidate_email=${encodeURIComponent(user.email)}`;
         const res     = await fetch(url, { method:"POST", body: formData });
         const apiData = await res.json();
         await stepPromise;
