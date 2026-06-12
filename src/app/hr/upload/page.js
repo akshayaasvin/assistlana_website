@@ -84,7 +84,7 @@ export default function HRUpload() {
     else setUser(JSON.parse(stored));
 
     // Check if backend is running
-    fetch("http://localhost:8000/api/health")
+    fetch("https://assistlana-backend.onrender.com/api/health")
       .then(r => r.json())
       .then(() => setBackendMode(true))
       .catch(() => setBackendMode(false));
@@ -125,7 +125,7 @@ export default function HRUpload() {
   const parseWithBackend = async (file, resumeUrl) => {
     const formData = new FormData();
     formData.append("file", file);
-    const res  = await fetch("http://localhost:8000/api/resume/parse-and-save", {
+    const res  = await fetch("https://assistlana-backend.onrender.com/api/resume/parse-and-save", {
       method: "POST",
       body:   formData,
     });
