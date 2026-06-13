@@ -1,9 +1,44 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Brain, ArrowRight, Users, UserCircle, X, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import { HR_USERS_AUTH, CANDIDATE_USERS_AUTH } from "@/lib/mockData";
 import { supabase } from "@/lib/supabase";
+
+function InstallButton() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setInstalled(true));
+
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") setInstalled(true);
+    setDeferredPrompt(null);
+  };
+
+  if (installed || !deferredPrompt) return null;
+
+  return (
+    <button
+      onClick={handleInstall}
+      className="flex items-center gap-2 bg-[#0EA5C9] hover:bg-[#0284a8] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+    >
+      📲 Install App
+    </button>
+  );
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -32,154 +67,152 @@ export default function HomePage() {
   };
 
   // ── SIGN IN ──────────────────────────────────────
-const handleSignIn = async () => {
-  setError("");
-  if (!email || !password) {
-    setError("Please enter email and password.");
-    return;
-  }
+  const handleSignIn = async () => {
+    setError("");
+    if (!email || !password) {
+      setError("Please enter email and password.");
+      return;
+    }
 
-  setLoading(true);
-  await new Promise(r => setTimeout(r, 1000));
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 1000));
 
-  if (portalChoice === "hr") {
-    const user = HR_USERS_AUTH.find(
-      u => u.email === email && u.password === password
-    );
+    if (portalChoice === "hr") {
+      const user = HR_USERS_AUTH.find(
+        u => u.email === email && u.password === password
+      );
 
-    if (user) {
-      localStorage.setItem("hr_user", JSON.stringify(user));
-      setShowSignIn(false);
-      resetModal();
-      router.push("/hr/upload");
+      if (user) {
+        localStorage.setItem("hr_user", JSON.stringify(user));
+        setShowSignIn(false);
+        resetModal();
+        router.push("/hr/upload");
+      } else {
+        setError("Invalid HR email or password.");
+        setLoading(false);
+      }
     } else {
-      setError("Invalid HR email or password.");
-      setLoading(false);
-    }
-  } else {
-    // Check Supabase database for real candidates
-    const { data, error } = await supabase
-      .from("candidates")
-      .select("*")
-      .eq("email", email)
-      .single();
-
-    if (error || !data) {
-      setError("No account found with this email. Please sign up first.");
-      setLoading(false);
-      return;
-    }
-
-    if (data.password !== password) {
-      setError("Incorrect password. Please try again.");
-      setLoading(false);
-      return;
-    }
-
-    // Login successful
-    localStorage.setItem(
-      "candidate_user",
-      JSON.stringify({
-        name: data.name,
-        email: data.email,
-        id: data.id,
-      })
-    );
-
-    setShowSignIn(false);
-    resetModal();
-    router.push("/candidate/dashboard");
-  }
-};
-
-  // ── SIGN UP ──────────────────────────────────────
-const handleSignUp = async () => {
-  setError("");
-  if (!signupData.name || !signupData.email || !signupData.password) {
-    setError("Please fill all fields."); return;
-  }
-  if (signupData.password.length < 6) {
-    setError("Password must be at least 6 characters."); return;
-  }
-  setLoading(true);
-
-  try {
-    if (signupData.role === "candidate") {
-
-      // Check if candidate already exists (uploaded by HR)
-      const { data: existing } = await supabase
+      // Check Supabase database for real candidates
+      const { data, error } = await supabase
         .from("candidates")
         .select("*")
-        .eq("email", signupData.email)
-        .maybeSingle();
+        .eq("email", email)
+        .single();
 
-      if (existing) {
-        // ── Candidate already exists (HR uploaded) → just add password ──
-        const { data: updated, error: updateError } = await supabase
-          .from("candidates")
-          .update({ password: signupData.password, name: signupData.name })
-          .eq("email", signupData.email)
-          .select()
-          .single();
-
-        if (updateError) {
-          setError("Update failed: " + updateError.message);
-          setLoading(false); return;
-        }
-
-        localStorage.setItem("candidate_user", JSON.stringify({
-          name: updated.name, email: updated.email, id: updated.id,
-        }));
+      if (error || !data) {
+        setError("No account found with this email. Please sign up first.");
         setLoading(false);
-        setShowSignUp(false);
-        resetModal();
-        router.push("/candidate/dashboard");
-
-      } else {
-        // ── New candidate → create fresh row ──
-        const { data: created, error: createError } = await supabase
-          .from("candidates")
-          .insert([{
-            name:     signupData.name,
-            email:    signupData.email,
-            password: signupData.password,
-            status:   "Pending",
-            ai_score: 0,
-            jd_match: 0,
-            skills:   [],
-          }])
-          .select()
-          .single();
-
-        if (createError) {
-          setError("Signup failed: " + createError.message);
-          setLoading(false); return;
-        }
-
-        localStorage.setItem("candidate_user", JSON.stringify({
-          name: created.name, email: created.email, id: created.id,
-        }));
-        setLoading(false);
-        setShowSignUp(false);
-        resetModal();
-        router.push("/candidate/dashboard");
+        return;
       }
 
-    } else {
-      // HR signup
-      setLoading(false);
-      setShowSignUp(false);
-      setSuccessMsg("HR account request sent! Admin will approve.");
-      setTimeout(() => setSuccessMsg(""), 4000);
+      if (data.password !== password) {
+        setError("Incorrect password. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Login successful
+      localStorage.setItem(
+        "candidate_user",
+        JSON.stringify({
+          name: data.name,
+          email: data.email,
+          id: data.id,
+        })
+      );
+
+      setShowSignIn(false);
+      resetModal();
+      router.push("/candidate/dashboard");
     }
+  };
 
-  } catch (err) {
-    setError("Something went wrong: " + err.message);
-    setLoading(false);
-  }
-};
+  // ── SIGN UP ──────────────────────────────────────
+  const handleSignUp = async () => {
+    setError("");
+    if (!signupData.name || !signupData.email || !signupData.password) {
+      setError("Please fill all fields."); return;
+    }
+    if (signupData.password.length < 6) {
+      setError("Password must be at least 6 characters."); return;
+    }
+    setLoading(true);
 
+    try {
+      if (signupData.role === "candidate") {
 
+        // Check if candidate already exists (uploaded by HR)
+        const { data: existing } = await supabase
+          .from("candidates")
+          .select("*")
+          .eq("email", signupData.email)
+          .maybeSingle();
+
+        if (existing) {
+          // ── Candidate already exists (HR uploaded) → just add password ──
+          const { data: updated, error: updateError } = await supabase
+            .from("candidates")
+            .update({ password: signupData.password, name: signupData.name })
+            .eq("email", signupData.email)
+            .select()
+            .single();
+
+          if (updateError) {
+            setError("Update failed: " + updateError.message);
+            setLoading(false); return;
+          }
+
+          localStorage.setItem("candidate_user", JSON.stringify({
+            name: updated.name, email: updated.email, id: updated.id,
+          }));
+          setLoading(false);
+          setShowSignUp(false);
+          resetModal();
+          router.push("/candidate/dashboard");
+
+        } else {
+          // ── New candidate → create fresh row ──
+          const { data: created, error: createError } = await supabase
+            .from("candidates")
+            .insert([{
+              name:     signupData.name,
+              email:    signupData.email,
+              password: signupData.password,
+              status:   "Pending",
+              ai_score: 0,
+              jd_match: 0,
+              skills:   [],
+            }])
+            .select()
+            .single();
+
+          if (createError) {
+            setError("Signup failed: " + createError.message);
+            setLoading(false); return;
+          }
+
+          localStorage.setItem("candidate_user", JSON.stringify({
+            name: created.name, email: created.email, id: created.id,
+          }));
+          setLoading(false);
+          setShowSignUp(false);
+          resetModal();
+          router.push("/candidate/dashboard");
+        }
+
+      } else {
+        // HR signup
+        setLoading(false);
+        setShowSignUp(false);
+        setSuccessMsg("HR account request sent! Admin will approve.");
+        setTimeout(() => setSuccessMsg(""), 4000);
+      }
+
+    } catch (err) {
+      setError("Something went wrong: " + err.message);
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0B1D3A] flex flex-col overflow-x-hidden">
@@ -201,18 +234,7 @@ const handleSignUp = async () => {
               <CheckCircle size={14}/>{successMsg}
             </div>
           )}
-          <button
-            onClick={() => { resetModal(); setShowSignIn(true); }}
-            className="px-5 py-2.5 text-white/80 hover:text-white text-sm font-semibold transition-all"
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => { resetModal(); setShowSignUp(true); }}
-            className="px-5 py-2.5 bg-[#0EA5C9] hover:bg-[#0284a8] text-white text-sm font-semibold rounded-xl transition-all"
-          >
-            Sign Up
-          </button>
+          <InstallButton/>
         </div>
       </nav>
 
