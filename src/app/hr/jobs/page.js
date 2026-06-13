@@ -50,42 +50,48 @@ export default function HRJobs() {
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <HRSidebar user={user}/>
-      <div className="ml-0 md:ml-56 flex-1">
+      <div className="ml-0 md:ml-56 flex-1 w-full min-w-0">
 
         {/* Topbar */}
-        <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-          <div>
-            <div className="text-lg font-bold text-[#1E293B]">Job Descriptions</div>
-            <div className="text-xs text-slate-400">Post jobs · candidates can view and apply</div>
+        <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-8 py-3 md:py-4 sticky top-0 z-10">
+          <div className="flex items-center justify-between gap-2 mb-3 md:mb-0">
+            <div className="min-w-0 pl-12 md:pl-0">
+              <div className="text-base md:text-lg font-bold text-[#1E293B] truncate">Job Descriptions</div>
+              <div className="text-xs text-slate-400 truncate hidden sm:block">Post jobs · candidates can view and apply</div>
+            </div>
+            <button className="relative p-2 bg-[#F1F5F9] rounded-xl flex-shrink-0 md:hidden">
+              <Bell size={16} className="text-slate-500"/>
+            </button>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-[#F1F5F9] rounded-xl px-4 py-2">
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 md:justify-end">
+            <div className="flex items-center gap-2 bg-[#F1F5F9] rounded-xl px-3 py-2 flex-shrink-0">
               <Search size={14} className="text-slate-400"/>
               <input
                 placeholder="Search jobs..."
-                className="bg-transparent text-sm outline-none w-32 text-slate-600"/>
+                className="bg-transparent text-sm outline-none w-24 md:w-32 text-slate-600"/>
             </div>
-            <button className="relative p-2 bg-[#F1F5F9] rounded-xl">
+            <button className="relative p-2 bg-[#F1F5F9] rounded-xl flex-shrink-0 hidden md:flex">
               <Bell size={16} className="text-slate-500"/>
             </button>
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-[#1253A4] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#0d47a1] transition-all">
+              className="flex items-center gap-2 bg-[#1253A4] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#0d47a1] transition-all flex-shrink-0 whitespace-nowrap">
               <Plus size={15}/> Post Job
             </button>
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-6 text-sm font-medium">
               {success}
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
             {jobs.map((job, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 hover:shadow-md transition-all flex flex-col">
+              <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-5 hover:shadow-md transition-all flex flex-col">
 
                 {/* Card Header */}
                 <div className="flex items-start justify-between mb-3">
@@ -154,14 +160,14 @@ export default function HRJobs() {
       {/* ── CREATE JOB MODAL ── */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="bg-[#0B1D3A] px-6 py-4 flex items-center justify-between">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#0B1D3A] px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-10">
               <div className="text-white font-bold">Post New Job</div>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white">
                 <X size={18}/>
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-slate-600 mb-1">Job Title *</label>
                 <input
@@ -170,7 +176,7 @@ export default function HRJobs() {
                   placeholder="e.g. Senior React Developer"
                   className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm outline-none focus:border-[#0EA5C9] bg-[#F8FAFC]"/>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-1">Department</label>
                   <select
@@ -210,7 +216,7 @@ export default function HRJobs() {
                   rows={4}
                   className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm outline-none focus:border-[#0EA5C9] bg-[#F8FAFC] resize-none"/>
               </div>
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
                   onClick={() => setShowModal(false)}
                   className="flex-1 py-2.5 border border-[#E2E8F0] rounded-xl text-sm font-semibold text-slate-500 hover:bg-[#F1F5F9] transition-all">
@@ -231,16 +237,16 @@ export default function HRJobs() {
       {viewJob && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div className="bg-[#0B1D3A] px-6 py-4 flex items-center justify-between sticky top-0">
-              <div className="text-white font-bold text-base">{viewJob.job.title}</div>
+            <div className="bg-[#0B1D3A] px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+              <div className="text-white font-bold text-base truncate pr-2">{viewJob.job.title}</div>
               <button
                 onClick={() => setViewJob(null)}
-                className="text-slate-400 hover:text-white transition-all">
+                className="text-slate-400 hover:text-white transition-all flex-shrink-0">
                 <X size={18}/>
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 md:p-6">
 
               {/* Status + Dept badges */}
               <div className="flex flex-wrap gap-2 mb-5">
@@ -299,7 +305,7 @@ export default function HRJobs() {
               </div>
 
               {/* Action buttons */}
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => {
                     setViewJob(null);
