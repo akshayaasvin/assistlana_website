@@ -99,7 +99,7 @@ export default function HRCandidates() {
              : s >= 70 ? "bg-yellow-100 text-yellow-700"
              : "bg-red-100 text-red-700";
     return (
-      <span className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${bg}`}>
+      <span className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${bg}`}>
         {s}
       </span>
     );
@@ -113,7 +113,7 @@ export default function HRCandidates() {
       Rejected:    "bg-red-100 text-red-700",
     };
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${map[status] || "bg-gray-100 text-gray-600"}`}>
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${map[status] || "bg-gray-100 text-gray-600"}`}>
         {status || "Pending"}
       </span>
     );
@@ -134,7 +134,7 @@ export default function HRCandidates() {
   if (loading) return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <HRSidebar user={user}/>
-      <div className="ml-0 md:ml-0 md:ml-0 md:ml-56 flex-1 flex items-center justify-center">
+      <div className="ml-0 md:ml-56 flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#1253A4] border-t-transparent rounded-full animate-spin mx-auto mb-4"/>
           <div className="text-slate-500 font-semibold">Loading candidates from Supabase...</div>
@@ -146,28 +146,36 @@ export default function HRCandidates() {
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <HRSidebar user={user}/>
-      <div className="ml-0 md:ml-0 md:ml-0 md:ml-56 flex-1">
+      <div className="ml-0 md:ml-56 flex-1 w-full min-w-0">
 
         {/* ── Topbar ── */}
-        <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-          <div>
-            <div className="text-lg font-bold text-[#1E293B]">Candidates</div>
-            <div className="text-xs text-slate-400">
-              Live from Supabase · {candidates.length} total candidates
+        <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-8 py-3 md:py-4 sticky top-0 z-10">
+          <div className="flex items-center justify-between gap-2 mb-3 md:mb-0">
+            <div className="min-w-0 pl-12 md:pl-0">
+              <div className="text-base md:text-lg font-bold text-[#1E293B] truncate">Candidates</div>
+              <div className="text-xs text-slate-400 truncate">
+                {candidates.length} total candidates
+              </div>
             </div>
+            <button className="relative p-2 bg-[#F1F5F9] rounded-xl flex-shrink-0 md:hidden">
+              <Bell size={16} className="text-slate-500"/>
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"/>
+            </button>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-[#F1F5F9] rounded-xl px-4 py-2">
+
+          {/* Action row */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 md:justify-end">
+            <div className="flex items-center gap-2 bg-[#F1F5F9] rounded-xl px-3 py-2 flex-shrink-0">
               <Search size={14} className="text-slate-400"/>
               <input
-                placeholder="Search name, location, skills..."
+                placeholder="Search..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="bg-transparent text-sm outline-none w-48 text-slate-600"/>
+                className="bg-transparent text-sm outline-none w-24 md:w-48 text-slate-600"/>
             </div>
             <button
               onClick={() => setShowFilter(!showFilter)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+              className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs md:text-sm font-semibold border transition-all flex-shrink-0 whitespace-nowrap ${
                 showFilter || activeFilters > 0
                   ? "bg-[#1253A4] text-white border-[#1253A4]"
                   : "bg-white text-slate-600 border-[#E2E8F0] hover:border-[#1253A4]"
@@ -182,23 +190,23 @@ export default function HRCandidates() {
             </button>
             <button
               onClick={() => downloadCandidatesExcel(filtered, "ASSISTLANA_Candidates")}
-              className="flex items-center gap-2 bg-[#10B981] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#059669] transition-all">
-              <Download size={14}/> Download Excel
+              className="flex items-center gap-1 bg-[#10B981] text-white px-3 py-2 rounded-xl text-xs md:text-sm font-semibold hover:bg-[#059669] transition-all flex-shrink-0 whitespace-nowrap">
+              <Download size={14}/> <span className="hidden sm:inline">Download Excel</span>
             </button>
             <button
               onClick={fetchCandidates}
-              className="p-2 bg-[#F1F5F9] rounded-xl text-slate-500 hover:bg-[#E2E8F0] transition-all"
+              className="p-2 bg-[#F1F5F9] rounded-xl text-slate-500 hover:bg-[#E2E8F0] transition-all flex-shrink-0"
               title="Refresh">
               🔄
             </button>
-            <button className="relative p-2 bg-[#F1F5F9] rounded-xl">
+            <button className="relative p-2 bg-[#F1F5F9] rounded-xl flex-shrink-0 hidden md:flex">
               <Bell size={16} className="text-slate-500"/>
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"/>
             </button>
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
 
           {/* Delete success */}
           {deleteMsg && (
@@ -209,9 +217,9 @@ export default function HRCandidates() {
 
           {/* ── Filter Panel ── */}
           {showFilter && (
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 mb-6 shadow-sm">
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6 mb-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <div className="font-bold text-[#1E293B] flex items-center gap-2">
+                <div className="font-bold text-[#1E293B] flex items-center gap-2 text-sm md:text-base">
                   <Filter size={16} className="text-[#1253A4]"/>
                   Filter Candidates
                 </div>
@@ -229,7 +237,7 @@ export default function HRCandidates() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Status */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
@@ -304,8 +312,8 @@ export default function HRCandidates() {
 
           {/* Results count */}
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-slate-500">
-              Showing <span className="font-bold text-[#1E293B]">{filtered.length}</span> of <span className="font-bold text-[#1E293B]">{candidates.length}</span> candidates
+            <div className="text-xs md:text-sm text-slate-500">
+              Showing <span className="font-bold text-[#1E293B]">{filtered.length}</span> of <span className="font-bold text-[#1E293B]">{candidates.length}</span>
             </div>
             <button onClick={() => downloadCandidatesExcel(filtered, "Filtered_Candidates")}
               className="flex items-center gap-2 text-xs text-[#10B981] font-semibold hover:underline">
@@ -313,100 +321,183 @@ export default function HRCandidates() {
             </button>
           </div>
 
-          {/* ── Table ── */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-                  {["Candidate","Location","Age","Qualification","AI Score","JD Match","Status","Actions"].map(h => (
-                    <th key={h} className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c,i) => (
-                  <tr key={c.id || i} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC] transition-all">
+          {/* ── MOBILE: Card List ── */}
+          <div className="md:hidden space-y-3">
+            {filtered.map((c,i) => (
+              <div key={c.id || i} className="bg-white rounded-2xl border border-[#E2E8F0] p-4">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                    style={{ background: getColor(c.name) }}>
+                    {getInitials(c.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-[#1E293B] truncate">{c.name}</div>
+                    <div className="text-xs text-slate-400 truncate">{c.email}</div>
+                  </div>
+                  <ScoreBadge score={c.ai_score}/>
+                </div>
 
-                    {/* Candidate */}
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                          style={{ background: getColor(c.name) }}>
-                          {getInitials(c.name)}
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-[#1E293B]">{c.name}</div>
-                          <div className="text-xs text-slate-400">{c.email}</div>
-                        </div>
-                      </div>
-                    </td>
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className="text-xs bg-[#F1F5F9] text-slate-600 px-2 py-1 rounded-lg font-medium">
+                    📍 {c.location || "N/A"}
+                  </span>
+                  <span className="text-xs bg-[#F5F3FF] text-[#8B5CF6] px-2 py-1 rounded-lg font-medium">
+                    {c.qualification || "—"}
+                  </span>
+                  <span className="text-xs text-slate-500">Age {c.age || "—"}</span>
+                  <StatusBadge status={c.status}/>
+                </div>
 
-                    {/* Location */}
-                    <td className="py-3 px-3">
-                      <span className="text-xs bg-[#F1F5F9] text-slate-600 px-2 py-1 rounded-lg font-medium">
-                        📍 {c.location || "N/A"}
-                      </span>
-                    </td>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex-1 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#0EA5C9] rounded-full"
+                      style={{ width:`${c.jd_match || 0}%` }}/>
+                  </div>
+                  <span className="text-xs font-bold flex-shrink-0">JD: {c.jd_match || 0}%</span>
+                </div>
 
-                    {/* Age */}
-                    <td className="py-3 px-3 text-sm text-slate-600 font-medium">
-                      {c.age || "—"}
-                    </td>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setSelected(c)}
+                    className="flex-1 flex items-center justify-center gap-1 p-2 bg-[#EFF6FF] text-[#1253A4] rounded-lg text-xs font-semibold">
+                    <Eye size={13}/> View
+                  </button>
+                  <button onClick={() => downloadSingleCandidate(c)}
+                    className="flex-1 flex items-center justify-center gap-1 p-2 bg-[#F0FDF4] text-[#10B981] rounded-lg text-xs font-semibold">
+                    <Download size={13}/> Excel
+                  </button>
+                  <button onClick={() => handleDelete(c.id)}
+                    className="p-2 bg-red-50 text-red-500 rounded-lg">
+                    <Trash2 size={13}/>
+                  </button>
+                </div>
+              </div>
+            ))}
 
-                    {/* Qualification */}
-                    <td className="py-3 px-3">
-                      <span className="text-xs bg-[#F5F3FF] text-[#8B5CF6] px-2 py-1 rounded-lg font-medium">
-                        {c.qualification || "—"}
-                      </span>
-                    </td>
+            {filtered.length === 0 && !loading && (
+              <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-[#E2E8F0]">
+                <div className="text-4xl mb-3">👥</div>
+                <div className="font-semibold mb-1">
+                  {candidates.length === 0
+                    ? "No candidates in database yet"
+                    : "No candidates match your filters"}
+                </div>
+                <div className="text-sm">
+                  {candidates.length === 0
+                    ? "Upload resumes to get started"
+                    : "Try adjusting your filters"}
+                </div>
+                {candidates.length === 0 && (
+                  <button onClick={() => router.push("/hr/upload")}
+                    className="mt-4 bg-[#1253A4] text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-[#0d47a1]">
+                    Upload Resumes →
+                  </button>
+                )}
+                {candidates.length > 0 && (
+                  <button onClick={resetFilters}
+                    className="mt-3 text-sm text-[#1253A4] font-semibold hover:underline">
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
-                    {/* AI Score */}
-                    <td className="py-3 px-3">
-                      <ScoreBadge score={c.ai_score}/>
-                    </td>
-
-                    {/* JD Match */}
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-14 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#0EA5C9] rounded-full"
-                            style={{ width:`${c.jd_match || 0}%` }}/>
-                        </div>
-                        <span className="text-xs font-bold">{c.jd_match || 0}%</span>
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-3 px-3">
-                      <StatusBadge status={c.status}/>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => setSelected(c)}
-                          className="p-1.5 bg-[#EFF6FF] text-[#1253A4] rounded-lg hover:bg-[#DBEAFE] transition-all"
-                          title="View Profile">
-                          <Eye size={13}/>
-                        </button>
-                        <button onClick={() => downloadSingleCandidate(c)}
-                          className="p-1.5 bg-[#F0FDF4] text-[#10B981] rounded-lg hover:bg-[#DCFCE7] transition-all"
-                          title="Download">
-                          <Download size={13}/>
-                        </button>
-                        <button onClick={() => handleDelete(c.id)}
-                          className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all"
-                          title="Delete">
-                          <Trash2 size={13}/>
-                        </button>
-                      </div>
-                    </td>
+          {/* ── DESKTOP: Table ── */}
+          <div className="hidden md:block bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                    {["Candidate","Location","Age","Qualification","AI Score","JD Match","Status","Actions"].map(h => (
+                      <th key={h} className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3 whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filtered.map((c,i) => (
+                    <tr key={c.id || i} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC] transition-all">
+
+                      {/* Candidate */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                            style={{ background: getColor(c.name) }}>
+                            {getInitials(c.name)}
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-[#1E293B]">{c.name}</div>
+                            <div className="text-xs text-slate-400">{c.email}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Location */}
+                      <td className="py-3 px-3">
+                        <span className="text-xs bg-[#F1F5F9] text-slate-600 px-2 py-1 rounded-lg font-medium whitespace-nowrap">
+                          📍 {c.location || "N/A"}
+                        </span>
+                      </td>
+
+                      {/* Age */}
+                      <td className="py-3 px-3 text-sm text-slate-600 font-medium">
+                        {c.age || "—"}
+                      </td>
+
+                      {/* Qualification */}
+                      <td className="py-3 px-3">
+                        <span className="text-xs bg-[#F5F3FF] text-[#8B5CF6] px-2 py-1 rounded-lg font-medium whitespace-nowrap">
+                          {c.qualification || "—"}
+                        </span>
+                      </td>
+
+                      {/* AI Score */}
+                      <td className="py-3 px-3">
+                        <ScoreBadge score={c.ai_score}/>
+                      </td>
+
+                      {/* JD Match */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-14 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
+                            <div className="h-full bg-[#0EA5C9] rounded-full"
+                              style={{ width:`${c.jd_match || 0}%` }}/>
+                          </div>
+                          <span className="text-xs font-bold">{c.jd_match || 0}%</span>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3 px-3">
+                        <StatusBadge status={c.status}/>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setSelected(c)}
+                            className="p-1.5 bg-[#EFF6FF] text-[#1253A4] rounded-lg hover:bg-[#DBEAFE] transition-all"
+                            title="View Profile">
+                            <Eye size={13}/>
+                          </button>
+                          <button onClick={() => downloadSingleCandidate(c)}
+                            className="p-1.5 bg-[#F0FDF4] text-[#10B981] rounded-lg hover:bg-[#DCFCE7] transition-all"
+                            title="Download">
+                            <Download size={13}/>
+                          </button>
+                          <button onClick={() => handleDelete(c.id)}
+                            className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all"
+                            title="Delete">
+                            <Trash2 size={13}/>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {/* Empty state */}
             {filtered.length === 0 && !loading && (
@@ -443,15 +534,15 @@ export default function HRCandidates() {
       {/* ── Candidate Detail Modal ── */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
 
             {/* Modal header */}
-            <div className="bg-[#0B1D3A] px-6 py-4 flex items-center justify-between">
+            <div className="bg-[#0B1D3A] px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-10">
               <div className="text-white font-bold">Candidate Profile</div>
               <div className="flex items-center gap-2">
                 <button onClick={() => downloadSingleCandidate(selected)}
                   className="flex items-center gap-1 bg-[#10B981] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#059669]">
-                  <Download size={12}/> Excel
+                  <Download size={12}/> <span className="hidden sm:inline">Excel</span>
                 </button>
                 <button onClick={() => setSelected(null)}
                   className="text-slate-400 hover:text-white">
@@ -460,16 +551,16 @@ export default function HRCandidates() {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               {/* Profile header */}
-              <div className="flex items-center gap-4 mb-5 p-4 bg-[#F8FAFC] rounded-xl">
+              <div className="flex flex-wrap items-center gap-4 mb-5 p-4 bg-[#F8FAFC] rounded-xl">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold flex-shrink-0"
                   style={{ background: getColor(selected.name) }}>
                   {getInitials(selected.name)}
                 </div>
-                <div className="flex-1">
-                  <div className="text-lg font-bold text-[#1E293B]">{selected.name}</div>
-                  <div className="text-sm text-slate-400">{selected.email}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-lg font-bold text-[#1E293B] truncate">{selected.name}</div>
+                  <div className="text-sm text-slate-400 truncate">{selected.email}</div>
                   <div className="text-xs text-slate-400 mt-0.5">
                     📍 {selected.location} · Age {selected.age}
                   </div>
@@ -542,7 +633,7 @@ export default function HRCandidates() {
               )}
 
               {/* Action buttons */}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => handleShortlist(selected)}
                   disabled={selected.status === "Shortlisted"}
@@ -558,7 +649,7 @@ export default function HRCandidates() {
                   <Download size={14}/> Download XL
                 </button>
                 <button onClick={() => handleDelete(selected.id)}
-                  className="px-4 bg-red-50 text-red-500 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-100 flex items-center gap-1">
+                  className="px-4 bg-red-50 text-red-500 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-100 flex items-center justify-center gap-1">
                   <Trash2 size={14}/> Delete
                 </button>
               </div>
