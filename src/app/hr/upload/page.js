@@ -237,54 +237,57 @@ export default function HRUpload() {
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <HRSidebar user={user}/>
-      <div className="ml-0 md:ml-0 md:ml-0 md:ml-56 flex-1">
+      <div className="ml-0 md:ml-56 flex-1 w-full min-w-0">
 
         {/* Topbar */}
-        <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-          <div>
-            <div className="text-lg font-bold text-[#1E293B]">Upload Resumes</div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <div className={`w-2 h-2 rounded-full ${backendMode ? "bg-green-500" : "bg-yellow-400"}`}/>
-              <div className="text-xs text-slate-400">
-                {backendMode
-                  ? "🟢 AI Backend connected — real parsing active"
-                  : "🟡 Simulation mode — start backend for real AI"}
+        <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-8 py-3 md:py-4 sticky top-0 z-10">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 pl-12 md:pl-0">
+              <div className="text-base md:text-lg font-bold text-[#1E293B] truncate">Upload Resumes</div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${backendMode ? "bg-green-500" : "bg-yellow-400"}`}/>
+                <div className="text-xs text-slate-400 truncate">
+                  {backendMode
+                    ? "AI Backend connected"
+                    : "Simulation mode"}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-[#F1F5F9] rounded-xl px-4 py-2">
-              <Search size={14} className="text-slate-400"/>
-              <input placeholder="Search..." className="bg-transparent text-sm outline-none w-32 text-slate-600"/>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="hidden sm:flex items-center gap-2 bg-[#F1F5F9] rounded-xl px-4 py-2">
+                <Search size={14} className="text-slate-400"/>
+                <input placeholder="Search..." className="bg-transparent text-sm outline-none w-24 md:w-32 text-slate-600"/>
+              </div>
+              <button className="relative p-2 bg-[#F1F5F9] rounded-xl">
+                <Bell size={16} className="text-slate-500"/>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"/>
+              </button>
             </div>
-            <button className="relative p-2 bg-[#F1F5F9] rounded-xl">
-              <Bell size={16} className="text-slate-500"/>
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"/>
-            </button>
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
             {[
               { label:"Files Selected",  val: files.length,                              color:"#1253A4" },
               { label:"Parsed & Saved",  val: files.filter(f=>f.status==="done").length, color:"#10B981" },
               { label:"Parse Mode",      val: backendMode ? "Real AI" : "Simulation",    color: backendMode ? "#10B981" : "#F59E0B" },
               { label:"Avg Parse Time",  val: "< 5s",                                    color:"#8B5CF6" },
             ].map((s,i) => (
-              <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] p-5">
-                <div className="text-sm text-slate-500 mb-1">{s.label}</div>
-                <div className="text-2xl font-bold" style={{ color:s.color }}>{s.val}</div>
+              <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] p-3 md:p-5">
+                <div className="text-xs md:text-sm text-slate-500 mb-1">{s.label}</div>
+                <div className="text-lg md:text-2xl font-bold" style={{ color:s.color }}>{s.val}</div>
               </div>
             ))}
           </div>
 
           {/* Backend status banner */}
           {backendMode && (
-            <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-6 text-sm flex items-center gap-2">
-              🟢 <strong>Real AI Mode:</strong> FastAPI backend connected. Resumes will be parsed with spaCy NLP for real name, email, skills and experience extraction!
+            <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-6 text-xs md:text-sm flex items-start gap-2">
+              <span className="flex-shrink-0">🟢</span>
+              <span><strong>Real AI Mode:</strong> FastAPI backend connected. Resumes will be parsed with spaCy NLP for real name, email, skills and experience extraction!</span>
             </div>
           )}
 
@@ -295,7 +298,7 @@ export default function HRUpload() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
 
             {/* LEFT — Upload Zone + File List */}
             <div>
@@ -304,12 +307,12 @@ export default function HRUpload() {
                 onDragLeave={() => setDrag(false)}
                 onDrop={e => { e.preventDefault(); setDrag(false); addFiles(e.dataTransfer.files); }}
                 onClick={() => !parsing && fileRef.current.click()}
-                className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all ${
+                className={`border-2 border-dashed rounded-2xl p-6 md:p-10 text-center transition-all ${
                   parsing ? "cursor-not-allowed opacity-60" : "cursor-pointer"
                 } ${drag ? "border-[#0EA5C9] bg-[#F0F9FF]" : "border-[#E2E8F0] bg-white hover:border-[#0EA5C9] hover:bg-[#F0F9FF]"}`}>
                 <input ref={fileRef} type="file" multiple accept=".pdf,.docx" className="hidden"
                   onChange={e => addFiles(e.target.files)}/>
-                <div className="text-5xl mb-3">📁</div>
+                <div className="text-4xl md:text-5xl mb-3">📁</div>
                 <div className="text-base font-bold text-[#1E293B] mb-1">Drop resumes here</div>
                 <div className="text-sm text-slate-400 mb-4">PDF or DOCX · Multiple files supported</div>
                 <div className="inline-flex items-center gap-2 bg-[#0EA5C9] text-white px-5 py-2 rounded-xl text-sm font-semibold">
@@ -332,7 +335,7 @@ export default function HRUpload() {
                   </div>
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                     {files.map((f, i) => (
-                      <div key={i} className={`flex items-center gap-3 rounded-xl px-4 py-3 border transition-all ${
+                      <div key={i} className={`flex items-center gap-3 rounded-xl px-3 md:px-4 py-3 border transition-all ${
                         f.status==="done"    ? "bg-green-50 border-green-200" :
                         f.status==="parsing" ? "bg-blue-50 border-blue-200"  :
                         f.status==="error"   ? "bg-red-50 border-red-200"    :
@@ -346,7 +349,7 @@ export default function HRUpload() {
                         }/>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-semibold text-[#1E293B] truncate">{f.name}</div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-xs text-slate-400 truncate">
                             {f.size}
                             {f.candidateName && (
                               <span className="ml-2 text-green-600 font-bold">→ {f.candidateName}</span>
@@ -357,9 +360,9 @@ export default function HRUpload() {
                           </div>
                         </div>
                         <div className="flex-shrink-0">
-                          {f.status === "done"    && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">✅ Saved</span>}
+                          {f.status === "done"    && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">✅</span>}
                           {f.status === "parsing" && <div className="w-5 h-5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"/>}
-                          {f.status === "error"   && <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-bold">❌ Error</span>}
+                          {f.status === "error"   && <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-bold">❌</span>}
                           {f.status === "ready" && !parsing && (
                             <button onClick={() => removeFile(i)}
                               className="w-6 h-6 bg-red-100 hover:bg-red-200 text-red-500 rounded-full flex items-center justify-center transition-all">
@@ -379,28 +382,28 @@ export default function HRUpload() {
                 disabled={parsing || files.filter(f => f.status === "ready").length === 0}
                 className="mt-4 w-full bg-[#1253A4] hover:bg-[#0d47a1] text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
                 {parsing
-                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Parsing & Saving to Database...</>
-                  : `🚀 ${backendMode ? "Real AI Parse" : "Start AI Parsing"} (${files.filter(f => f.status === "ready").length} files)`
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Parsing & Saving...</>
+                  : `🚀 ${backendMode ? "Real AI Parse" : "Start AI Parsing"} (${files.filter(f => f.status === "ready").length})`
                 }
               </button>
 
               {/* Success */}
               {done && saved.length > 0 && (
                 <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 text-green-700 font-bold mb-3">
+                  <div className="flex items-center gap-2 text-green-700 font-bold mb-3 text-sm">
                     <CheckCircle size={16}/>
                     {saved.length} candidate{saved.length > 1 ? "s" : ""} saved to Supabase!
                   </div>
                   <div className="space-y-1 mb-3">
                     {saved.map((c, i) => (
-                      <div key={i} className="text-sm text-green-700 flex items-center gap-2">
+                      <div key={i} className="text-sm text-green-700 flex items-center gap-2 flex-wrap">
                         <span>✓</span>
                         <span className="font-semibold">{c.name}</span>
                         <span className="text-green-500 text-xs">Score: {c.ai_score} · {c.location}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <button onClick={() => router.push("/hr/candidates")}
                       className="flex-1 bg-[#10B981] text-white py-2 rounded-xl text-sm font-semibold hover:bg-[#059669] transition-all">
                       View Candidates →
@@ -412,39 +415,40 @@ export default function HRUpload() {
                   </div>
                 </div>
               )}
-            </div>
-            {/* Recent Uploads with timestamp */}
-            <div className="mt-6 bg-white rounded-2xl border border-[#E2E8F0] p-5">
-             <div className="font-bold text-[#1E293B] mb-4">📋 Recent Uploads & Applications</div>
-             <div className="space-y-3">
-               {[...saved, ...RECENT_UPLOADS.slice(0, 3)].map((c, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-                 <div className="w-9 h-9 bg-[#1253A4] rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                   {(c.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+
+              {/* Recent Uploads with timestamp */}
+              <div className="mt-6 bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-5">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">📋 Recent Uploads & Applications</div>
+                <div className="space-y-3">
+                  {[...saved, ...RECENT_UPLOADS.slice(0, 3)].map((c, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                      <div className="w-9 h-9 bg-[#1253A4] rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {(c.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-[#1E293B] truncate">{c.name}</div>
+                        <div className="text-xs text-slate-400 truncate">
+                          {c.file || "Resume uploaded"} · {c.time || "Just now"}
+                        </div>
+                      </div>
+                      <div className="text-center flex-shrink-0">
+                        <div className={`text-sm font-bold ${
+                          (c.ai_score||c.score||0) >= 85 ? "text-green-600" :
+                          (c.ai_score||c.score||0) >= 70 ? "text-yellow-600" : "text-slate-400"
+                        }`}>
+                          {c.ai_score || c.score || 0}
+                        </div>
+                        <div className="text-xs text-slate-400">Score</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-               <div className="flex-1 min-w-0">
-                 <div className="text-sm font-semibold text-[#1E293B] truncate">{c.name}</div>
-                 <div className="text-xs text-slate-400">
-                   {c.file || "Resume uploaded"} · {c.time || "Just now"}
-                 </div>
-               </div>
-               <div className="text-center flex-shrink-0">
-                 <div className={`text-sm font-bold ${
-                   (c.ai_score||c.score||0) >= 85 ? "text-green-600" :
-                   (c.ai_score||c.score||0) >= 70 ? "text-yellow-600" : "text-slate-400"
-                  }`}>
-                   {c.ai_score || c.score || 0}
-                 </div>
-                <div className="text-xs text-slate-400">Score</div>
-               </div>
+              </div>
             </div>
-         ))}
-     </div>
-  </div>
 
             {/* RIGHT — AI Pipeline */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-              <div className="font-bold text-[#1E293B] mb-1">🤖 AI Processing Pipeline</div>
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+              <div className="font-bold text-[#1E293B] mb-1 text-sm md:text-base">🤖 AI Processing Pipeline</div>
               <div className="text-xs text-slate-400 mb-5">Each resume goes through 7 automated steps</div>
               <div className="space-y-3">
                 {steps.map((step, i) => (
@@ -461,8 +465,8 @@ export default function HRUpload() {
                        step.status==="active" ? <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"/> :
                        step.icon}
                     </div>
-                    <div>
-                      <div className={`text-sm font-semibold ${
+                    <div className="min-w-0 flex-1">
+                      <div className={`text-sm font-semibold truncate ${
                         step.status==="done"   ? "text-green-700" :
                         step.status==="active" ? "text-blue-700"  : "text-slate-400"
                       }`}>{step.label}</div>
