@@ -23,18 +23,13 @@ export default function HRSettings() {
   });
 
   const [prefs, setPrefs] = useState({
-    autoShortlist:   true,
-    showScores:      true,
-    defaultSort:     "score",
-    resultsPerPage:  "20",
+    autoShortlist: true, showScores: true,
+    defaultSort: "score", resultsPerPage: "20",
   });
 
   const [notifs, setNotifs] = useState({
-    parseComplete:  true,
-    newApplication: true,
-    shortlistAlert: true,
-    weeklyReport:   false,
-    emailDigest:    true,
+    parseComplete: true, newApplication: true,
+    shortlistAlert: true, weeklyReport: false, emailDigest: true,
   });
 
   useEffect(() => {
@@ -55,13 +50,17 @@ export default function HRSettings() {
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <HRSidebar user={user}/>
-      <div className="ml-0 md:ml-0 md:ml-0 md:ml-56 flex-1">
-        <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 sticky top-0 z-10">
-          <div className="text-lg font-bold text-[#1E293B]">HR Settings</div>
-          <div className="text-xs text-slate-400">Manage your profile, preferences and security</div>
+      <div className="ml-0 md:ml-56 flex-1 w-full min-w-0">
+
+        {/* Topbar */}
+        <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-8 py-3 md:py-4 sticky top-0 z-10">
+          <div className="pl-12 md:pl-0">
+            <div className="text-base md:text-lg font-bold text-[#1E293B]">HR Settings</div>
+            <div className="text-xs text-slate-400">Manage your profile, preferences and security</div>
+          </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           {saved && (
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-6 text-sm font-medium">
               <Check size={16}/>{saved}
@@ -69,10 +68,10 @@ export default function HRSettings() {
           )}
 
           {/* Tabs */}
-          <div className="flex gap-1 bg-white rounded-2xl border border-[#E2E8F0] p-1.5 mb-6 w-fit">
+          <div className="flex gap-1 bg-white rounded-2xl border border-[#E2E8F0] p-1.5 mb-6 overflow-x-auto">
             {TABS.map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`px-3 md:px-5 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
                   activeTab === tab
                     ? "bg-[#0EA5C9] text-white shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
@@ -82,20 +81,19 @@ export default function HRSettings() {
             ))}
           </div>
 
-          {/* ── PROFILE ── */}
+          {/* PROFILE */}
           {activeTab === "Profile" && (
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-5">
-                  <User size={16} className="inline mr-2 text-[#0EA5C9]"/>
-                  Profile Information
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
+                  <User size={16} className="inline mr-2 text-[#0EA5C9]"/>Profile Information
                 </div>
-                <div className="flex items-center gap-4 mb-6 p-4 bg-[#F0F9FF] rounded-xl">
-                  <div className="w-14 h-14 bg-[#0EA5C9] rounded-2xl flex items-center justify-center text-white text-lg font-bold">
+                <div className="flex items-center gap-4 mb-5 p-4 bg-[#F0F9FF] rounded-xl">
+                  <div className="w-12 h-12 md:w-14 md:h-14 bg-[#0EA5C9] rounded-2xl flex items-center justify-center text-white text-base md:text-lg font-bold flex-shrink-0">
                     {user.name?.split(" ").map(n=>n[0]).join("")}
                   </div>
-                  <div>
-                    <div className="font-bold text-[#1E293B]">{user.name}</div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-[#1E293B] truncate">{user.name}</div>
                     <div className="text-sm text-[#0EA5C9]">{user.role}</div>
                   </div>
                 </div>
@@ -119,10 +117,9 @@ export default function HRSettings() {
                 </button>
               </div>
 
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 h-fit">
-                <div className="font-bold text-[#1E293B] mb-4">
-                  <FileText size={16} className="inline mr-2 text-[#0EA5C9]"/>
-                  Resume Parse Preferences
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6 h-fit">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
+                  <FileText size={16} className="inline mr-2 text-[#0EA5C9]"/>Resume Parse Preferences
                 </div>
                 {[
                   { label:"Default Resume Format", options:["PDF","DOCX","Both"] },
@@ -144,17 +141,17 @@ export default function HRSettings() {
             </div>
           )}
 
-          {/* ── PREFERENCES ── */}
+          {/* PREFERENCES */}
           {activeTab === "Preferences" && (
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-5">⚙️ Dashboard Preferences</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">⚙️ Dashboard Preferences</div>
                 {[
                   { key:"autoShortlist", label:"Auto-Shortlist Top Candidates", desc:"Automatically shortlist candidates scoring 85+" },
                   { key:"showScores",    label:"Show AI Scores in Table",        desc:"Display score column in candidates table"       },
                 ].map(item => (
-                  <div key={item.key} className="flex items-center justify-between py-3.5 border-b border-[#F1F5F9] last:border-0">
-                    <div>
+                  <div key={item.key} className="flex items-center justify-between py-3.5 border-b border-[#F1F5F9] last:border-0 gap-3">
+                    <div className="min-w-0">
                       <div className="text-sm font-semibold text-[#1E293B]">{item.label}</div>
                       <div className="text-xs text-slate-400">{item.desc}</div>
                     </div>
@@ -168,7 +165,7 @@ export default function HRSettings() {
                     </button>
                   </div>
                 ))}
-                <div className="mt-4 grid grid-cols-2 gap-4">
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-600 mb-1">Default Sort</label>
                     <select value={prefs.defaultSort}
@@ -197,23 +194,22 @@ export default function HRSettings() {
             </div>
           )}
 
-          {/* ── NOTIFICATIONS ── */}
+          {/* NOTIFICATIONS */}
           {activeTab === "Notifications" && (
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-5">
-                  <Bell size={16} className="inline mr-2 text-[#0EA5C9]"/>
-                  Notification Preferences
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
+                  <Bell size={16} className="inline mr-2 text-[#0EA5C9]"/>Notification Preferences
                 </div>
                 {[
-                  { key:"parseComplete",  label:"Resume Parse Complete",   desc:"Notify when AI finishes parsing"         },
-                  { key:"newApplication", label:"New Application",         desc:"Notify when candidate applies"           },
-                  { key:"shortlistAlert", label:"Shortlist Updated",       desc:"Notify when shortlist changes"           },
-                  { key:"weeklyReport",   label:"Weekly Hiring Report",    desc:"Summary every Monday morning"            },
-                  { key:"emailDigest",    label:"Email Digest",            desc:"Daily email with platform activity"      },
+                  { key:"parseComplete",  label:"Resume Parse Complete", desc:"Notify when AI finishes parsing"    },
+                  { key:"newApplication", label:"New Application",       desc:"Notify when candidate applies"      },
+                  { key:"shortlistAlert", label:"Shortlist Updated",     desc:"Notify when shortlist changes"      },
+                  { key:"weeklyReport",   label:"Weekly Hiring Report",  desc:"Summary every Monday morning"       },
+                  { key:"emailDigest",    label:"Email Digest",          desc:"Daily email with platform activity" },
                 ].map(item => (
-                  <div key={item.key} className="flex items-center justify-between py-3.5 border-b border-[#F1F5F9] last:border-0">
-                    <div>
+                  <div key={item.key} className="flex items-center justify-between py-3.5 border-b border-[#F1F5F9] last:border-0 gap-3">
+                    <div className="min-w-0">
                       <div className="text-sm font-semibold text-[#1E293B]">{item.label}</div>
                       <div className="text-xs text-slate-400">{item.desc}</div>
                     </div>
@@ -235,13 +231,12 @@ export default function HRSettings() {
             </div>
           )}
 
-          {/* ── SECURITY ── */}
+          {/* SECURITY */}
           {activeTab === "Security" && (
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-5">
-                  <Lock size={16} className="inline mr-2 text-[#0EA5C9]"/>
-                  Change Password
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
+                  <Lock size={16} className="inline mr-2 text-[#0EA5C9]"/>Change Password
                 </div>
                 {[
                   { label:"Current Password", key:"oldPassword",     show:showOld, setShow:setShowOld },

@@ -115,7 +115,7 @@ export default function HRShortlist() {
                       ? "text-white border-transparent"
                       : "bg-white text-slate-500 border-[#E2E8F0]"
                   }`}
-                  style={activeCol === col.id ? { background: col.color, borderColor: col.color } : {}}>
+                  style={activeCol === col.id ? { background: COLUMNS.find(c=>c.id===activeCol)?.color, borderColor: COLUMNS.find(c=>c.id===activeCol)?.color } : {}}>
                   {col.label}
                   <span className={`rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold ${
                     activeCol === col.id ? "bg-white/20 text-white" : "bg-[#F1F5F9] text-slate-500"
@@ -127,22 +127,21 @@ export default function HRShortlist() {
             </div>
 
             {/* Active Column Cards */}
-            {(() => {
-              const col = COLUMNS.find(c => c.id === activeCol);
-              const colIdx = COLUMNS.findIndex(c => c.id === activeCol);
-              const cards = board[activeCol].filter(c =>
-                c.name.toLowerCase().includes(search.toLowerCase())
-              );
-              return (
-                <div className="rounded-2xl p-4 min-h-64" style={{ background: col.bg }}>
-                  {cards.length === 0 ? (
-                    <div className="text-center py-12 text-slate-300">
-                      <div className="text-3xl mb-2">📋</div>
-                      <div className="text-xs font-medium">No candidates here</div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {cards.map((candidate, i) => (
+            <div className="rounded-2xl p-4 min-h-64" style={{ background: COLUMNS.find(c=>c.id===activeCol)?.bg }}>
+              {board[activeCol].filter(c => c.name.toLowerCase().includes(search.toLowerCase())).length === 0 ? (
+                <div className="text-center py-12 text-slate-300">
+                  <div className="text-3xl mb-2">📋</div>
+                  <div className="text-xs font-medium">
+                    {search ? "No candidates match search" : "No candidates here"}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {board[activeCol]
+                    .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+                    .map((candidate, i) => {
+                      const colIdx = COLUMNS.findIndex(c => c.id === activeCol);
+                      return (
                         <div key={i} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
                           <div className="flex items-center gap-3 mb-3">
                             <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
@@ -177,7 +176,6 @@ export default function HRShortlist() {
                             </span>
                           </div>
 
-                          {/* Move buttons for mobile */}
                           <div className="flex gap-2">
                             {colIdx > 0 && (
                               <button
@@ -196,12 +194,11 @@ export default function HRShortlist() {
                             )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    })}
                 </div>
-              );
-            })()}
+              )}
+            </div>
 
             <div className="mt-4 bg-white rounded-2xl border border-[#E2E8F0] p-4 text-xs text-slate-500">
               💡 <strong>Tip:</strong> Use the ← → buttons to move candidates between stages.
