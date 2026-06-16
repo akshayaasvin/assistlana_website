@@ -160,7 +160,7 @@ export default function CandidateResume() {
 
   if (loading) return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
-      <div className="w-56 bg-[#0B1D3A] min-h-screen flex-shrink-0"/>
+      <div className="w-56 bg-[#0B1D3A] min-h-screen flex-shrink-0 hidden md:block"/>
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin mx-auto mb-3"/>
@@ -175,25 +175,28 @@ export default function CandidateResume() {
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <CandidateSidebar user={user}/>
-      <div className="ml-0 md:ml-56 flex-1">
+      <div className="ml-0 md:ml-56 flex-1 w-full min-w-0">
 
-        <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-          <div>
-            <div className="text-lg font-bold text-[#1E293B]">My Resume</div>
-            <div className="text-xs text-slate-400">Upload resume · AI extracts real data · score updates instantly</div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => loadCandidate(user)}
-              className="flex items-center gap-2 bg-[#F1F5F9] text-slate-600 px-3 py-2 rounded-xl text-sm hover:bg-[#E2E8F0] transition-all">
-              <RefreshCw size={14}/> Refresh
-            </button>
-            <button className="relative p-2 bg-[#F1F5F9] rounded-xl">
-              <Bell size={16} className="text-slate-500"/>
-            </button>
+        {/* Topbar */}
+        <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-8 py-3 md:py-4 sticky top-0 z-10">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 pl-12 md:pl-0">
+              <div className="text-base md:text-lg font-bold text-[#1E293B]">My Resume</div>
+              <div className="text-xs text-slate-400 hidden sm:block">Upload resume · AI extracts real data · score updates instantly</div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={() => loadCandidate(user)}
+                className="flex items-center gap-1 bg-[#F1F5F9] text-slate-600 px-2 md:px-3 py-2 rounded-xl text-xs md:text-sm hover:bg-[#E2E8F0] transition-all">
+                <RefreshCw size={14}/> <span className="hidden sm:inline">Refresh</span>
+              </button>
+              <button className="relative p-2 bg-[#F1F5F9] rounded-xl">
+                <Bell size={16} className="text-slate-500"/>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-5 text-sm font-medium">
               {success}
@@ -210,24 +213,24 @@ export default function CandidateResume() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
             <div className="space-y-5">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-4">👤 My Profile</div>
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">👤 My Profile</div>
 
                 {candidate ? (
                   <>
-                    <div className="flex items-center gap-4 mb-5 p-4 bg-[#F0FDF4] rounded-xl">
-                      <div className="w-14 h-14 bg-[#10B981] rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                    <div className="flex flex-wrap items-center gap-4 mb-5 p-4 bg-[#F0FDF4] rounded-xl">
+                      <div className="w-12 h-12 md:w-14 md:h-14 bg-[#10B981] rounded-2xl flex items-center justify-center text-white text-lg md:text-xl font-bold flex-shrink-0">
                         {(candidate.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-lg font-bold text-[#1E293B] truncate">{candidate.name}</div>
+                        <div className="text-base md:text-lg font-bold text-[#1E293B] truncate">{candidate.name}</div>
                         <div className="text-sm text-slate-400 truncate">{candidate.email}</div>
                         {candidate.phone && <div className="text-xs text-slate-400 mt-0.5">📞 {candidate.phone}</div>}
                       </div>
                       <div className="text-center flex-shrink-0">
-                        <div className={`text-4xl font-bold ${
+                        <div className={`text-3xl md:text-4xl font-bold ${
                           (candidate.ai_score||0)>=80 ? "text-green-600" :
                           (candidate.ai_score||0)>=60 ? "text-yellow-600" : "text-slate-400"
                         }`}>{candidate.ai_score || 0}</div>
@@ -236,7 +239,7 @@ export default function CandidateResume() {
                     </div>
 
                     {editing ? (
-                      <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                         {[
                           ["Location",         "location"        ],
                           ["Experience (yrs)", "experience_years"],
@@ -251,7 +254,7 @@ export default function CandidateResume() {
                               className="w-full text-sm font-bold text-[#1E293B] bg-white border border-[#E2E8F0] rounded-lg px-2 py-1 outline-none"/>
                           </div>
                         ))}
-                        <div className="col-span-2 flex gap-2 mt-1">
+                        <div className="col-span-1 sm:col-span-2 flex gap-2 mt-1">
                           <button onClick={handleSaveProfile}
                             className="flex-1 bg-[#10B981] text-white py-2 rounded-xl text-sm font-semibold">
                             Save Changes ✅
@@ -263,7 +266,7 @@ export default function CandidateResume() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                         {[
                           ["📍 Location",   candidate.location                     || "Not set"],
                           ["💼 Experience", (candidate.experience_years||"—")+" yrs"           ],
@@ -277,7 +280,7 @@ export default function CandidateResume() {
                             <div className="text-sm font-bold text-[#1E293B]">{v}</div>
                           </div>
                         ))}
-                        <div className="col-span-2">
+                        <div className="col-span-1 sm:col-span-2">
                           <button onClick={() => { setEditing(true); setEditData({}); }}
                             className="w-full bg-[#EFF6FF] text-[#1253A4] py-2 rounded-xl text-sm font-semibold hover:bg-[#DBEAFE] transition-all">
                             ✏️ Edit Profile
@@ -333,13 +336,13 @@ export default function CandidateResume() {
                 )}
               </div>
 
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-4">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
                   ⬆️ {candidate?.resume_url ? "Update My Resume" : "Upload My Resume"}
                 </div>
                 <div
                   onClick={() => !parsing && fileRef.current.click()}
-                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                  className={`border-2 border-dashed rounded-xl p-6 md:p-8 text-center transition-all ${
                     parsing ? "cursor-not-allowed opacity-60 border-[#E2E8F0]"
                             : "cursor-pointer border-[#E2E8F0] hover:border-[#10B981] hover:bg-[#F0FDF4]"
                   }`}>
@@ -402,8 +405,8 @@ export default function CandidateResume() {
             </div>
 
             <div className="space-y-5">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="flex items-center gap-2 font-bold text-[#1E293B] mb-4">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="flex items-center gap-2 font-bold text-[#1E293B] mb-4 text-sm md:text-base">
                   <Lightbulb size={18} className="text-[#F59E0B]"/>
                   AI Resume Suggestions
                 </div>

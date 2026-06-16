@@ -90,7 +90,7 @@ export default function CandidateSettings() {
 
   if (!user || !candidate) return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
-      <div className="w-56 bg-[#0B1D3A] min-h-screen flex-shrink-0"/>
+      <div className="w-56 bg-[#0B1D3A] min-h-screen flex-shrink-0 hidden md:block"/>
       <div className="flex-1 flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin"/>
       </div>
@@ -100,23 +100,28 @@ export default function CandidateSettings() {
   return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <CandidateSidebar user={user}/>
-      <div className="ml-0 md:ml-56 flex-1">
-        <div className="bg-white border-b border-[#E2E8F0] px-8 py-4 sticky top-0 z-10">
-          <div className="text-lg font-bold text-[#1E293B]">My Settings</div>
-          <div className="text-xs text-slate-400">Manage your profile, resume visibility and notifications</div>
+      <div className="ml-0 md:ml-56 flex-1 w-full min-w-0">
+
+        {/* Topbar */}
+        <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-8 py-3 md:py-4 sticky top-0 z-10">
+          <div className="pl-12 md:pl-0">
+            <div className="text-base md:text-lg font-bold text-[#1E293B]">My Settings</div>
+            <div className="text-xs text-slate-400 hidden sm:block">Manage your profile, resume visibility and notifications</div>
+          </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           {saved && (
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-6 text-sm font-medium">
               <Check size={16}/>{saved}
             </div>
           )}
 
-          <div className="flex gap-1 bg-white rounded-2xl border border-[#E2E8F0] p-1.5 mb-6 w-fit">
+          {/* Tabs */}
+          <div className="flex gap-1 bg-white rounded-2xl border border-[#E2E8F0] p-1.5 mb-6 overflow-x-auto">
             {TABS.map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`px-3 md:px-5 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
                   activeTab === tab
                     ? "bg-[#10B981] text-white shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
@@ -128,21 +133,21 @@ export default function CandidateSettings() {
 
           {/* PROFILE TAB */}
           {activeTab === "Profile" && (
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
                   <User size={16} className="inline mr-2 text-[#10B981]"/>
                   Personal Information
                 </div>
 
                 {/* Profile header from Supabase */}
-                <div className="flex items-center gap-4 mb-6 p-4 bg-[#F0FDF4] rounded-xl">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold bg-[#10B981]">
+                <div className="flex items-center gap-4 mb-5 p-4 bg-[#F0FDF4] rounded-xl">
+                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center text-white text-base md:text-lg font-bold bg-[#10B981] flex-shrink-0">
                     {(candidate.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
                   </div>
-                  <div>
-                    <div className="font-bold text-[#1E293B]">{candidate.name}</div>
-                    <div className="text-sm text-[#10B981]">{candidate.email}</div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-[#1E293B] truncate">{candidate.name}</div>
+                    <div className="text-sm text-[#10B981] truncate">{candidate.email}</div>
                     <div className="text-xs text-slate-400">AI Score: {candidate.ai_score||0}/100</div>
                   </div>
                 </div>
@@ -173,8 +178,8 @@ export default function CandidateSettings() {
 
               {/* Stats from Supabase */}
               <div className="space-y-4">
-                <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                  <div className="font-bold text-[#1E293B] mb-4">📊 Your Stats</div>
+                <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                  <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">📊 Your Stats</div>
                   {[
                     ["AI Score",      (candidate.ai_score||0)+"/100"          ],
                     ["JD Match",      (candidate.jd_match||0)+"%"             ],
@@ -183,15 +188,15 @@ export default function CandidateSettings() {
                     ["Location",      candidate.location     || "—"           ],
                     ["Qualification", candidate.qualification|| "—"           ],
                   ].map(([l,v],i) => (
-                    <div key={i} className="flex justify-between py-2.5 border-b border-[#F1F5F9] last:border-0">
+                    <div key={i} className="flex justify-between py-2.5 border-b border-[#F1F5F9] last:border-0 gap-2">
                       <span className="text-sm text-slate-400">{l}</span>
-                      <span className="text-sm font-bold text-[#1E293B]">{v}</span>
+                      <span className="text-sm font-bold text-[#1E293B] text-right truncate">{v}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                  <div className="font-bold text-[#1E293B] mb-3">🔧 Your Skills</div>
+                <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                  <div className="font-bold text-[#1E293B] mb-3 text-sm md:text-base">🔧 Your Skills</div>
                   <div className="flex flex-wrap gap-2">
                     {(candidate.skills||[]).map((s,i) => (
                       <span key={i} className="text-xs bg-[#F0FDF4] text-[#10B981] border border-[#A7F3D0] px-3 py-1.5 rounded-full font-medium">
@@ -210,9 +215,9 @@ export default function CandidateSettings() {
 
           {/* RESUME SETTINGS TAB */}
           {activeTab === "Resume Settings" && (
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
                   <FileText size={16} className="inline mr-2 text-[#10B981]"/>
                   Resume Visibility & Settings
                 </div>
@@ -237,8 +242,8 @@ export default function CandidateSettings() {
                   { key:"jobAlerts", label:"Job Match Alerts",      desc:"Notify when matching jobs posted"   },
                   { key:"autoApply", label:"Auto-Apply to Matches", desc:"Auto-apply when JD match above 85%" },
                 ].map(item => (
-                  <div key={item.key} className="flex items-center justify-between py-3.5 border-b border-[#F1F5F9] last:border-0">
-                    <div>
+                  <div key={item.key} className="flex items-center justify-between py-3.5 border-b border-[#F1F5F9] last:border-0 gap-3">
+                    <div className="min-w-0">
                       <div className="text-sm font-semibold text-[#1E293B]">{item.label}</div>
                       <div className="text-xs text-slate-400">{item.desc}</div>
                     </div>
@@ -262,9 +267,9 @@ export default function CandidateSettings() {
 
           {/* NOTIFICATIONS TAB */}
           {activeTab === "Notifications" && (
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
                   <Bell size={16} className="inline mr-2 text-[#10B981]"/>
                   Notification Preferences
                 </div>
@@ -275,8 +280,8 @@ export default function CandidateSettings() {
                   { key:"aiSuggestions",     label:"AI Resume Tips",            desc:"Weekly AI improvement suggestions"     },
                   { key:"emailDigest",       label:"Email Digest",              desc:"Daily email with job recommendations"  },
                 ].map(item => (
-                  <div key={item.key} className="flex items-center justify-between py-3.5 border-b border-[#F1F5F9] last:border-0">
-                    <div>
+                  <div key={item.key} className="flex items-center justify-between py-3.5 border-b border-[#F1F5F9] last:border-0 gap-3">
+                    <div className="min-w-0">
                       <div className="text-sm font-semibold text-[#1E293B]">{item.label}</div>
                       <div className="text-xs text-slate-400">{item.desc}</div>
                     </div>
@@ -300,9 +305,9 @@ export default function CandidateSettings() {
 
           {/* SECURITY TAB */}
           {activeTab === "Security" && (
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-                <div className="font-bold text-[#1E293B] mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
                   <Lock size={16} className="inline mr-2 text-[#10B981]"/>
                   Change Password
                 </div>
@@ -332,8 +337,8 @@ export default function CandidateSettings() {
                 </button>
               </div>
 
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 h-fit">
-                <div className="font-bold text-[#1E293B] mb-4">🔐 Account Security</div>
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6 h-fit">
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">🔐 Account Security</div>
                 <div className="space-y-3">
                   {[
                     { icon:"✅", label:"Email Verified",  val:"Verified" },
@@ -342,9 +347,9 @@ export default function CandidateSettings() {
                     { icon:"🕐", label:"Last Login",       val:"Just now" },
                     { icon:"🌐", label:"Active Sessions",  val:"1 device" },
                   ].map((item,i) => (
-                    <div key={i} className="flex justify-between items-center py-2.5 border-b border-[#F1F5F9] last:border-0">
+                    <div key={i} className="flex justify-between items-center py-2.5 border-b border-[#F1F5F9] last:border-0 gap-2">
                       <span className="text-sm text-slate-600">{item.icon} {item.label}</span>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 ${
                         item.val === "Verified"  ? "bg-green-100 text-green-700" :
                         item.val === "Disabled" || item.val === "Not Set" ? "bg-red-100 text-red-600" :
                         "bg-slate-100 text-slate-600"
