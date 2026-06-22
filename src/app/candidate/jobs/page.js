@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CandidateSidebar from "@/components/candidate/CandidateSidebar";
-import { JOBS, CANDIDATES, AI_SUGGESTIONS } from "@/lib/mockData";
+import { JOBS, CANDIDATES } from "@/lib/mockData";
 import { Search, Bell, X, CheckCircle, Briefcase, Lightbulb } from "lucide-react";
 
 export default function CandidateJobs() {
@@ -192,7 +192,7 @@ export default function CandidateJobs() {
             <div className="p-4 md:p-6">
               <p className="text-sm text-slate-500 mb-4">To improve your match for this role:</p>
               <div className="space-y-3">
-                {AI_SUGGESTIONS.map((s,i) => (
+                {(candidate?.ai_suggestions?.length > 0 ? candidate.ai_suggestions : AI_SUGGESTIONS).map((s,i) => (
                   <div key={i} className="flex items-start gap-3 p-3 bg-[#FFFBEB] rounded-xl border border-[#FDE68A]">
                     <span className="text-[#F59E0B] font-bold text-sm flex-shrink-0">{i+1}.</span>
                     <span className="text-sm text-slate-600">{s}</span>

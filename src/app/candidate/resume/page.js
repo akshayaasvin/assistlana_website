@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import CandidateSidebar from "@/components/candidate/CandidateSidebar";
 import { supabase } from "@/lib/supabase";
-import { AI_SUGGESTIONS } from "@/lib/mockData";
 import { FileText, CheckCircle, Bell, Lightbulb, RefreshCw } from "lucide-react";
 
 const PARSE_STEPS = [
@@ -182,7 +181,9 @@ export default function CandidateResume() {
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 pl-12 md:pl-0">
               <div className="text-base md:text-lg font-bold text-[#1E293B]">My Resume</div>
-              <div className="text-xs text-slate-400 hidden sm:block">Upload resume · AI extracts real data · score updates instantly</div>
+              <div className="text-xs text-slate-400 hidden sm:block">
+                Upload resume · AI extracts real data · score updates instantly
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <button onClick={() => loadCandidate(user)}
@@ -214,12 +215,17 @@ export default function CandidateResume() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+
+            {/* ── LEFT COLUMN ── */}
             <div className="space-y-5">
+
+              {/* Profile Card */}
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
                 <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">👤 My Profile</div>
 
                 {candidate ? (
                   <>
+                    {/* Avatar + Score */}
                     <div className="flex flex-wrap items-center gap-4 mb-5 p-4 bg-[#F0FDF4] rounded-xl">
                       <div className="w-12 h-12 md:w-14 md:h-14 bg-[#10B981] rounded-2xl flex items-center justify-center text-white text-lg md:text-xl font-bold flex-shrink-0">
                         {(candidate.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
@@ -227,7 +233,9 @@ export default function CandidateResume() {
                       <div className="flex-1 min-w-0">
                         <div className="text-base md:text-lg font-bold text-[#1E293B] truncate">{candidate.name}</div>
                         <div className="text-sm text-slate-400 truncate">{candidate.email}</div>
-                        {candidate.phone && <div className="text-xs text-slate-400 mt-0.5">📞 {candidate.phone}</div>}
+                        {candidate.phone && (
+                          <div className="text-xs text-slate-400 mt-0.5">📞 {candidate.phone}</div>
+                        )}
                       </div>
                       <div className="text-center flex-shrink-0">
                         <div className={`text-3xl md:text-4xl font-bold ${
@@ -238,6 +246,7 @@ export default function CandidateResume() {
                       </div>
                     </div>
 
+                    {/* Edit / View mode */}
                     {editing ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                         {[
@@ -289,6 +298,7 @@ export default function CandidateResume() {
                       </div>
                     )}
 
+                    {/* Skills */}
                     {candidate.skills && candidate.skills.length > 0 && (
                       <div className="mb-4">
                         <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">
@@ -304,6 +314,7 @@ export default function CandidateResume() {
                       </div>
                     )}
 
+                    {/* Score Breakdown */}
                     {(candidate.ai_score||0) > 0 && (
                       <div className="border-t border-[#F1F5F9] pt-4">
                         <div className="text-xs font-bold text-slate-400 mb-3 uppercase">Score Breakdown</div>
@@ -336,6 +347,7 @@ export default function CandidateResume() {
                 )}
               </div>
 
+              {/* Upload Card */}
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
                 <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">
                   ⬆️ {candidate?.resume_url ? "Update My Resume" : "Upload My Resume"}
@@ -343,8 +355,9 @@ export default function CandidateResume() {
                 <div
                   onClick={() => !parsing && fileRef.current.click()}
                   className={`border-2 border-dashed rounded-xl p-6 md:p-8 text-center transition-all ${
-                    parsing ? "cursor-not-allowed opacity-60 border-[#E2E8F0]"
-                            : "cursor-pointer border-[#E2E8F0] hover:border-[#10B981] hover:bg-[#F0FDF4]"
+                    parsing
+                      ? "cursor-not-allowed opacity-60 border-[#E2E8F0]"
+                      : "cursor-pointer border-[#E2E8F0] hover:border-[#10B981] hover:bg-[#F0FDF4]"
                   }`}>
                   <input ref={fileRef} type="file" accept=".pdf,.docx" className="hidden"
                     onChange={e => e.target.files[0] && handleUpload(e.target.files[0])}/>
@@ -355,6 +368,7 @@ export default function CandidateResume() {
                   <div className="text-xs text-slate-400">PDF or DOCX · Max 10MB</div>
                 </div>
 
+                {/* Uploaded file status */}
                 {uploaded && (
                   <div className={`mt-4 flex items-center gap-3 p-3 rounded-xl border ${
                     newScore ? "bg-green-50 border-green-200" : "bg-[#F0FDF4] border-[#A7F3D0]"
@@ -364,11 +378,16 @@ export default function CandidateResume() {
                       <div className="text-sm font-semibold text-[#1E293B] truncate">{uploaded.name}</div>
                       <div className="text-xs text-slate-400">{uploaded.size}</div>
                     </div>
-                    {parsing && <div className="w-5 h-5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin flex-shrink-0"/>}
-                    {!parsing && newScore && <CheckCircle size={18} className="text-[#10B981] flex-shrink-0"/>}
+                    {parsing && (
+                      <div className="w-5 h-5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin flex-shrink-0"/>
+                    )}
+                    {!parsing && newScore && (
+                      <CheckCircle size={18} className="text-[#10B981] flex-shrink-0"/>
+                    )}
                   </div>
                 )}
 
+                {/* Parse Steps */}
                 {(parsing || newScore) && (
                   <div className="mt-4 space-y-2">
                     {steps.map((step,i) => (
@@ -381,8 +400,9 @@ export default function CandidateResume() {
                           step.status==="active" ? "bg-blue-100"  : "bg-[#F1F5F9]"
                         }`}>
                           {step.status==="done"   ? "✅" :
-                           step.status==="active" ? <div className="w-3.5 h-3.5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"/> :
-                           step.icon}
+                           step.status==="active"
+                             ? <div className="w-3.5 h-3.5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"/>
+                             : step.icon}
                         </div>
                         <span className={`text-xs font-medium ${
                           step.status==="done"   ? "text-green-700" :
@@ -393,6 +413,7 @@ export default function CandidateResume() {
                   </div>
                 )}
 
+                {/* Score updated */}
                 {newScore && (
                   <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
                     <div className="text-sm font-bold text-green-700 mb-1">🎉 Profile Updated!</div>
@@ -404,18 +425,29 @@ export default function CandidateResume() {
               </div>
             </div>
 
+            {/* ── RIGHT COLUMN — AI Suggestions ── */}
             <div className="space-y-5">
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
                 <div className="flex items-center gap-2 font-bold text-[#1E293B] mb-4 text-sm md:text-base">
                   <Lightbulb size={18} className="text-[#F59E0B]"/>
                   AI Resume Suggestions
                 </div>
-                <p className="text-sm text-slate-500 mb-4">Follow these tips to improve your score:</p>
+                <p className="text-sm text-slate-500 mb-4">
+                  {candidate?.ai_suggestions?.length > 0
+                    ? "Personalized tips based on your resume:"
+                    : "Upload your resume to get personalized tips:"}
+                </p>
                 <div className="space-y-3">
-                  {AI_SUGGESTIONS.map((s,i) => (
+                  {(candidate?.ai_suggestions?.length > 0
+                    ? candidate.ai_suggestions
+                    : [
+                        "Upload your resume to get AI-personalized suggestions based on your actual skills and experience.",
+                        "Once uploaded, tips will be specific to your profile — not generic advice.",
+                      ]
+                  ).map((s, i) => (
                     <div key={i} className="flex items-start gap-3 p-3 bg-[#FFFBEB] rounded-xl border border-[#FDE68A]">
                       <div className="w-6 h-6 bg-[#F59E0B] rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
-                        {i+1}
+                        {i + 1}
                       </div>
                       <div className="text-sm text-slate-600">{s}</div>
                     </div>
@@ -423,6 +455,7 @@ export default function CandidateResume() {
                 </div>
               </div>
             </div>
+
           </div>
         </div>
       </div>

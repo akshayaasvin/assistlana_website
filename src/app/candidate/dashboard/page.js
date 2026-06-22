@@ -15,8 +15,15 @@ export default function CandidateDashboard() {
     if (!stored) { router.push("/"); return; }
     const u = JSON.parse(stored);
     setUser(u);
-    const found = CANDIDATES.find(c => c.email === u.email) || CANDIDATES[0];
-    setCandidate(found);
+    // Load from Supabase instead of mock
+    import("@/lib/supabase").then(({ supabase }) => {
+      supabase.from("candidates").select("*")
+        .eq("email", u.email).maybeSingle()
+        .then(({ data }) => {
+          if (data) setCandidate(data);
+          else setCandidate(CANDIDATES.find(c => c.email === u.email) || CANDIDATES[0]);
+        });
+    });
   }, []);
 
   if (!user || !candidate) return null;
@@ -201,7 +208,7 @@ export default function CandidateDashboard() {
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
               <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">🤖 AI Resume Suggestions</div>
               <div className="space-y-3">
-                {AI_SUGGESTIONS.slice(0,4).map((s,i) => (
+                {(candidate?.ai_suggestions?.length > 0 ? candidate.ai_suggestions.slice(0,4) : AI_SUGGESTIONS.slice(0,4)).map((s,i) => (
                   <div key={i} className="flex items-start gap-3 p-3 bg-[#F8FAFF] rounded-xl border border-[#E2E8F0]">
                     <div className="w-5 h-5 bg-[#EFF6FF] rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-[#1253A4] mt-0.5">
                       {i+1}
