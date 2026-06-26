@@ -5,64 +5,63 @@ import CandidateSidebar from "@/components/candidate/CandidateSidebar";
 import { supabase } from "@/lib/supabase";
 import { Upload, FileText, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 
-async function analyzeResume(text) {
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || "",
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        messages: [{
-          role: "user",
-          content: `You are an expert ATS resume reviewer. Analyze the resume text and return ONLY valid JSON with no extra text:
-{
-  "ats_score": 0-100,
-  "overall_feedback": "string",
-  "strengths": ["string","string","string"],
-  "improvements": [{"section":"string","issue":"string","suggestion":"string"}],
-  "missing_keywords": ["string"],
-  "formatting_tips": ["string"]
-}
+const MAX_FILE_SIZE_MB = 5;
+const ACCEPTED_TYPES = [".pdf", ".docx", ".doc"];
 
-Resume text: ${text.slice(0, 3000)}`,
-        }],
-      }),
-    });
-    const data = await res.json();
-    const raw = data.content?.[0]?.text || "";
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]);
-    throw new Error("No JSON");
-  } catch {
-    return {
-      ats_score: 65,
-      overall_feedback: "Your resume has been reviewed. Consider adding more specific achievements and quantified results.",
-      strengths: ["Clear contact information","Listed work experience","Included education section"],
-      improvements: [
-        { section:"Summary", issue:"Missing professional summary", suggestion:"Add a 2-3 sentence professional summary at the top." },
-        { section:"Experience", issue:"Lacks quantified achievements", suggestion:"Add numbers: 'Increased sales by 30%' instead of 'Improved sales'." },
-      ],
-      missing_keywords: ["project management","agile","communication","leadership"],
-      formatting_tips: ["Use consistent bullet points","Keep to 1-2 pages","Use standard section headings"],
-    };
-  }
-}
-
+// Extract readable text from uploaded file
 async function extractTextFromFile(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result;
-      if (typeof text === "string") resolve(text.slice(0, 5000));
-      else resolve("Resume content uploaded.");
-    };
-    reader.readAsText(file);
+
+    if (file.name.toLowerCase().endsWith(".docx") || file.name.toLowerCase().endsWith(".doc")) {
+      // DOCX files are ZIP archives of XML — read as binary, strip XML tags
+      reader.onload = (e) => {
+        const binary = e.target?.result || "";
+        // Extract readable text between XML tags (works for .docx word/document.xml content)
+        const textContent = binary
+          .toString()
+          .replace(/<[^>]+>/g, " ")   // strip XML tags
+          .replace(/[^\x20-\x7E\n\r\t]/g, " ") // remove non-printable chars
+          .replace(/\s{3,}/g, "\n")   // collapse excessive whitespace
+          .trim()
+          .slice(0, 5000);
+        resolve(textContent.length > 50 ? textContent : `Document: ${file.name}. Could not extract readable text.`);
+      };
+      reader.readAsBinaryString(file);
+    } else if (file.name.toLowerCase().endsWith(".pdf")) {
+      // For PDFs, read as text (works for text-based PDFs; image PDFs will return limited content)
+      reader.onload = (e) => {
+        const raw = e.target?.result || "";
+        // Strip PDF binary header/footer, keep only printable ASCII
+        const cleaned = raw
+          .toString()
+          .replace(/[^\x20-\x7E\n\r\t]/g, " ")
+          .replace(/\s{3,}/g, "\n")
+          .trim()
+          .slice(0, 5000);
+        resolve(cleaned.length > 100 ? cleaned : `PDF resume: ${file.name}. Limited text could be extracted — ensure the PDF is text-based, not scanned.`);
+      };
+      reader.readAsBinaryString(file);
+    } else {
+      reader.onload = (e) => {
+        const text = e.target?.result;
+        resolve(typeof text === "string" ? text.slice(0, 5000) : `File: ${file.name}`);
+      };
+      reader.readAsText(file);
+    }
   });
+}
+
+async function analyzeResume(text) {
+  const res = await fetch("/api/analyze-resume", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error("Analysis service unavailable.");
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
 }
 
 export default function CandidateResume() {
@@ -70,6 +69,7 @@ export default function CandidateResume() {
   const fileRef = useRef();
   const [user,      setUser]      = useState(null);
   const [file,      setFile]      = useState(null);
+  const [fileError, setFileError] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [result,    setResult]    = useState(null);
   const [error,     setError]     = useState("");
@@ -82,9 +82,26 @@ export default function CandidateResume() {
     const u = JSON.parse(stored);
     setUser(u);
     supabase.from("resume_suggestions").select("*").eq("candidate_email", u.email)
-      .order("created_at", { ascending: false }).limit(3)
+      .order("created_at", { ascending: false }).limit(5)
       .then(({ data }) => setPastScans(data || []));
   }, []);
+
+  const validateAndSetFile = (f) => {
+    setFileError("");
+    const ext = "." + f.name.split(".").pop().toLowerCase();
+    if (!ACCEPTED_TYPES.includes(ext)) {
+      setFileError(`Unsupported file type. Please upload ${ACCEPTED_TYPES.join(", ")}`);
+      return;
+    }
+    const sizeMB = f.size / (1024 * 1024);
+    if (sizeMB > MAX_FILE_SIZE_MB) {
+      setFileError(`File too large (${sizeMB.toFixed(1)} MB). Maximum size is ${MAX_FILE_SIZE_MB} MB.`);
+      return;
+    }
+    setFile(f);
+    setResult(null);
+    setError("");
+  };
 
   const handleAnalyze = async () => {
     if (!file) { setError("Please select a resume file first."); return; }
@@ -102,7 +119,7 @@ export default function CandidateResume() {
           ats_score:       analysis.ats_score,
         }]);
         const { data } = await supabase.from("resume_suggestions").select("*")
-          .eq("candidate_email", user.email).order("created_at", { ascending: false }).limit(3);
+          .eq("candidate_email", user.email).order("created_at", { ascending: false }).limit(5);
         setPastScans(data || []);
 
         await supabase.from("candidates").update({ ats_score: analysis.ats_score }).eq("email", user.email);
@@ -114,7 +131,6 @@ export default function CandidateResume() {
   };
 
   const scoreColor = (s) => s >= 70 ? "text-green-600" : s >= 40 ? "text-amber-600" : "text-red-500";
-  const scoreBg    = (s) => s >= 70 ? "from-green-400 to-[#0D9488]" : s >= 40 ? "from-amber-400 to-orange-500" : "from-red-400 to-red-600";
 
   if (!user) return null;
 
@@ -137,9 +153,9 @@ export default function CandidateResume() {
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm">
                 <h2 className="font-bold text-[#0F172A] mb-4">Upload Your Resume</h2>
 
-                {error && (
+                {(error || fileError) && (
                   <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-2.5 mb-4 text-sm">
-                    <AlertCircle size={14}/>{error}
+                    <AlertCircle size={14}/>{error || fileError}
                   </div>
                 )}
 
@@ -149,18 +165,18 @@ export default function CandidateResume() {
                     analyzing ? "opacity-60 cursor-not-allowed border-[#E2E8F0]" :
                     file ? "border-[#0D9488] bg-[#F0FDFA]" : "border-[#E2E8F0] hover:border-[#0284C7] hover:bg-[#F0F9FF]"
                   }`}>
-                  <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" className="hidden"
-                    onChange={e => { if (e.target.files[0]) { setFile(e.target.files[0]); setResult(null); } }}/>
+                  <input ref={fileRef} type="file" accept=".pdf,.docx,.doc" className="hidden"
+                    onChange={e => { if (e.target.files[0]) validateAndSetFile(e.target.files[0]); }}/>
                   <div className="text-4xl mb-3">{file ? "📄" : "☁️"}</div>
                   <div className="font-semibold text-[#0F172A] text-sm mb-1">
                     {file ? file.name : "Click to upload PDF or DOCX"}
                   </div>
                   <div className="text-xs text-[#64748B]">
-                    {file ? `${(file.size/1024).toFixed(0)} KB` : "Supports PDF, DOCX, TXT"}
+                    {file ? `${(file.size / 1024).toFixed(0)} KB` : `Supports PDF, DOC, DOCX · Max ${MAX_FILE_SIZE_MB} MB`}
                   </div>
                 </div>
 
-                <button onClick={handleAnalyze} disabled={!file || analyzing}
+                <button onClick={handleAnalyze} disabled={!file || analyzing || !!fileError}
                   className="mt-4 w-full bg-gradient-to-r from-[#0284C7] to-[#0D9488] text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-60 hover:opacity-90 transition-all">
                   {analyzing ? (
                     <span className="flex items-center justify-center gap-2">
@@ -176,7 +192,7 @@ export default function CandidateResume() {
                 <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
                   <h3 className="font-bold text-[#0F172A] mb-3">Past Analyses</h3>
                   <div className="space-y-2">
-                    {pastScans.map((s,i) => (
+                    {pastScans.map((s, i) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
                         <div className="text-xs text-[#64748B]">{new Date(s.created_at).toLocaleDateString()}</div>
                         <span className={`text-sm font-bold ${scoreColor(s.ats_score)}`}>{s.ats_score}/100</span>
@@ -213,9 +229,9 @@ export default function CandidateResume() {
                       <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
                         <circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" strokeWidth="10"/>
                         <circle cx="60" cy="60" r="50" fill="none"
-                          stroke={result.ats_score>=70 ? "#0D9488" : result.ats_score>=40 ? "#F59E0B" : "#EF4444"}
+                          stroke={result.ats_score >= 70 ? "#0D9488" : result.ats_score >= 40 ? "#F59E0B" : "#EF4444"}
                           strokeWidth="10"
-                          strokeDasharray={`${(result.ats_score/100)*314} 314`}
+                          strokeDasharray={`${(result.ats_score / 100) * 314} 314`}
                           strokeLinecap="round"/>
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -227,49 +243,53 @@ export default function CandidateResume() {
                   </div>
 
                   {/* Strengths */}
-                  <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
-                    <h3 className="font-bold text-[#0F172A] mb-3 text-sm">✅ Strengths</h3>
-                    <ul className="space-y-1.5">
-                      {result.strengths?.map((s,i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-[#64748B]">
-                          <CheckCircle size={13} className="text-green-500 flex-shrink-0 mt-0.5"/>
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  {result.strengths?.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
+                      <h3 className="font-bold text-[#0F172A] mb-3 text-sm">✅ Strengths</h3>
+                      <ul className="space-y-1.5">
+                        {result.strengths.map((s, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-[#64748B]">
+                            <CheckCircle size={13} className="text-green-500 flex-shrink-0 mt-0.5"/>
+                            {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   {/* Improvements */}
-                  <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-[#E2E8F0]">
-                      <h3 className="font-bold text-[#0F172A] text-sm">🔧 Improvements Needed</h3>
+                  {result.improvements?.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+                      <div className="p-4 border-b border-[#E2E8F0]">
+                        <h3 className="font-bold text-[#0F172A] text-sm">🔧 Improvements Needed</h3>
+                      </div>
+                      <div className="divide-y divide-[#F1F5F9]">
+                        {result.improvements.map((imp, i) => (
+                          <div key={i} className="p-4">
+                            <button
+                              onClick={() => setExpanded(p => ({ ...p, [i]: !p[i] }))}
+                              className="w-full flex items-center justify-between text-left">
+                              <span className="text-sm font-semibold text-[#0F172A]">{imp.section}</span>
+                              {expanded[i] ? <ChevronUp size={14} className="text-[#64748B]"/> : <ChevronDown size={14} className="text-[#64748B]"/>}
+                            </button>
+                            {expanded[i] && (
+                              <div className="mt-2 space-y-1.5">
+                                <p className="text-xs text-red-600">Issue: {imp.issue}</p>
+                                <p className="text-xs text-[#0284C7]">Fix: {imp.suggestion}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="divide-y divide-[#F1F5F9]">
-                      {result.improvements?.map((imp,i) => (
-                        <div key={i} className="p-4">
-                          <button
-                            onClick={() => setExpanded(p => ({ ...p, [i]: !p[i] }))}
-                            className="w-full flex items-center justify-between text-left">
-                            <span className="text-sm font-semibold text-[#0F172A]">{imp.section}</span>
-                            {expanded[i] ? <ChevronUp size={14} className="text-[#64748B]"/> : <ChevronDown size={14} className="text-[#64748B]"/>}
-                          </button>
-                          {expanded[i] && (
-                            <div className="mt-2 space-y-1.5">
-                              <p className="text-xs text-red-600">Issue: {imp.issue}</p>
-                              <p className="text-xs text-[#0284C7]">Fix: {imp.suggestion}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  )}
 
                   {/* Missing Keywords */}
                   {result.missing_keywords?.length > 0 && (
                     <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
                       <h3 className="font-bold text-[#0F172A] mb-3 text-sm">🔑 Missing Keywords</h3>
                       <div className="flex flex-wrap gap-2">
-                        {result.missing_keywords.map((k,i) => (
+                        {result.missing_keywords.map((k, i) => (
                           <span key={i} className="bg-[#FEE2E2] text-[#DC2626] rounded-full px-3 py-1 text-xs font-semibold">{k}</span>
                         ))}
                       </div>
@@ -281,7 +301,7 @@ export default function CandidateResume() {
                     <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
                       <h3 className="font-bold text-[#0F172A] mb-3 text-sm">💡 Formatting Tips</h3>
                       <ul className="space-y-1.5">
-                        {result.formatting_tips.map((t,i) => (
+                        {result.formatting_tips.map((t, i) => (
                           <li key={i} className="text-xs text-[#64748B] flex items-start gap-2">
                             <span className="text-[#0284C7] font-bold flex-shrink-0">→</span>{t}
                           </li>

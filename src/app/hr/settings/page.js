@@ -41,6 +41,19 @@ export default function HRSettings() {
   }, []);
 
   const handleSave = (section) => {
+    if (section === "Profile") {
+      if (!profile.name.trim()) { setSaved("❌ Name cannot be empty."); setTimeout(() => setSaved(""), 3000); return; }
+      // Persist updated name to localStorage
+      const updated = { ...user, name: profile.name.trim() };
+      localStorage.setItem("hr_user", JSON.stringify(updated));
+      setUser(updated);
+    } else if (section === "Password") {
+      const { oldPassword, newPassword, confirmPassword } = passwords;
+      if (!oldPassword || !newPassword || !confirmPassword) { setSaved("❌ Fill all password fields."); setTimeout(() => setSaved(""), 3000); return; }
+      if (newPassword.length < 6) { setSaved("❌ New password must be at least 6 characters."); setTimeout(() => setSaved(""), 3000); return; }
+      if (newPassword !== confirmPassword) { setSaved("❌ Passwords do not match."); setTimeout(() => setSaved(""), 3000); return; }
+      setPasswords({ oldPassword: "", newPassword: "", confirmPassword: "" });
+    }
     setSaved(`✅ ${section} saved successfully!`);
     setTimeout(() => setSaved(""), 3000);
   };

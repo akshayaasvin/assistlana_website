@@ -29,35 +29,34 @@ const QUESTIONS = {
 
 async function scoreAnswer(question, answer, language) {
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("/api/score-answer", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || "",
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 300,
-        messages: [{
-          role: "user",
-          content: `You are a professional interview coach. Score this interview answer 0-100.
-Language: ${language}
-Question: ${question}
-Answer: ${answer}
-
-Return ONLY valid JSON: {"score": number, "feedback": "one sentence feedback"}`,
-        }],
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, answer, language }),
     });
-    const data = await res.json();
-    const text = data.content?.[0]?.text || '{"score":50,"feedback":"Answer received."}';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : { score: 50, feedback: "Answer received." };
+    if (!res.ok) throw new Error("Server error");
+    return await res.json();
   } catch {
-    const wordCount = answer.trim().split(/\s+/).length;
-    const score = Math.min(100, Math.max(20, wordCount * 3 + 20));
-    return { score, feedback: "Answer evaluated based on length and content." };
+    // Quality-based local fallback — NOT length-based
+    const a = answer.toLowerCase().trim();
+    const q = question.toLowerCase();
+    const words = a.split(/\s+/).filter(Boolean);
+    const wordCount = words.length;
+    const qWords = q.split(/\s+/).filter(w => w.length > 4);
+    const relevantHits = qWords.filter(w => a.includes(w)).length;
+    const hasSpecifics = /\d+|example|because|result|achieved|improved/.test(a);
+    const isPureNonsense = wordCount > 5 && relevantHits === 0 && !hasSpecifics;
+    let score = 15 + Math.round((qWords.length > 0 ? relevantHits / qWords.length : 0) * 35);
+    if (hasSpecifics) score += 15;
+    if (wordCount >= 30 && wordCount <= 200) score += 15;
+    if (isPureNonsense) score = Math.min(score, 18);
+    score = Math.min(75, Math.max(5, score));
+    const feedback = score >= 60
+      ? "Good answer with relevant content."
+      : score >= 35
+        ? "Add specific examples and address the question more directly."
+        : "Your answer lacks relevance — focus on what the question actually asks.";
+    return { score, feedback };
   }
 }
 

@@ -9,7 +9,6 @@ import {
   Brain, Cpu, Workflow, MessageSquare, BarChart3,
   Cloud, GitBranch, Layers, Rocket, CheckCheck,
 } from "lucide-react";
-import { HR_USERS_AUTH } from "@/lib/mockData";
 import { supabase } from "@/lib/supabase";
 import PublicHeader from "@/components/shared/PublicHeader";
 import GlobalFooter from "@/components/shared/GlobalFooter";
@@ -136,11 +135,15 @@ export default function HomePage() {
     setLoading(true);
     await new Promise(r => setTimeout(r, 600));
     if (portalChoice === "hr") {
-      const user = HR_USERS_AUTH.find(u => u.email === email && u.password === password);
-      if (user) {
-        localStorage.setItem("hr_user", JSON.stringify(user));
-        setShowSignIn(false); resetModal(); router.push("/hr/upload");
-      } else { setError("Invalid HR email or password."); setLoading(false); }
+      const { data: hrUser, error: hrErr } = await supabase
+        .from("hr_registry")
+        .select("*")
+        .eq("email", email)
+        .single();
+      if (hrErr || !hrUser) { setError("Invalid HR email or password."); setLoading(false); return; }
+      if (hrUser.password !== password) { setError("Invalid HR email or password."); setLoading(false); return; }
+      localStorage.setItem("hr_user", JSON.stringify({ name: hrUser.name, email: hrUser.email, role: hrUser.role || "HR Manager" }));
+      setShowSignIn(false); resetModal(); router.push("/hr/upload");
     } else {
       const { data, error: dbErr } = await supabase.from("candidates").select("*").eq("email", email).single();
       if (dbErr || !data) { setError("No account found. Please sign up first."); setLoading(false); return; }

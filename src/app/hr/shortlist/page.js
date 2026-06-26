@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import HRSidebar from "@/components/hr/HRSidebar";
-import { CANDIDATES } from "@/lib/mockData";
+import { supabase } from "@/lib/supabase";
 import { Bell, Search } from "lucide-react";
 
 const COLUMNS = [
@@ -12,50 +12,81 @@ const COLUMNS = [
   { id:"offer",      label:"✅ Offer",       color:"#10B981", bg:"#F0FDF4" },
 ];
 
+const AVATAR_COLORS = ["#1253A4","#0EA5C9","#8B5CF6","#10B981","#F59E0B","#EF4444","#6366F1"];
+function avatarColor(name, idx) {
+  if (!name) return AVATAR_COLORS[idx % AVATAR_COLORS.length];
+  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+}
+function initials(name) {
+  if (!name) return "?";
+  return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+}
+function scoreColor(s) {
+  if (s >= 85) return "bg-green-100 text-green-700";
+  if (s >= 70) return "bg-yellow-100 text-yellow-700";
+  return "bg-red-100 text-red-700";
+}
+
 export default function HRShortlist() {
   const router = useRouter();
   const [user,     setUser]     = useState(null);
+  const [loading,  setLoading]  = useState(true);
   const [board,    setBoard]    = useState({
-    reviewing:   CANDIDATES.filter(c => c.status === "Reviewing"),
-    shortlisted: CANDIDATES.filter(c => c.status === "Shortlisted"),
+    reviewing:   [],
+    shortlisted: [],
     interview:   [],
     offer:       [],
   });
   const [dragging,   setDragging]   = useState(null);
   const [search,     setSearch]     = useState("");
-  const [activeCol,  setActiveCol]  = useState("reviewing"); // mobile tab
+  const [activeCol,  setActiveCol]  = useState("reviewing");
 
   useEffect(() => {
     const stored = localStorage.getItem("hr_user");
-    if (!stored) router.push("/");
-    else setUser(JSON.parse(stored));
+    if (!stored) { router.push("/"); return; }
+    setUser(JSON.parse(stored));
+    loadCandidates();
   }, []);
+
+  const loadCandidates = async () => {
+    const { data } = await supabase.from("candidates").select("*").order("ai_score", { ascending: false });
+    const candidates = data || [];
+    setBoard({
+      reviewing:   candidates.filter(c => c.status === "Reviewing" || c.status === "Pending"),
+      shortlisted: candidates.filter(c => c.status === "Shortlisted"),
+      interview:   candidates.filter(c => c.status === "Interview"),
+      offer:       candidates.filter(c => c.status === "Offer"),
+    });
+    setLoading(false);
+  };
 
   const handleDragStart = (candidate, fromCol) => {
     setDragging({ candidate, fromCol });
   };
 
-  const handleDrop = (toCol) => {
-    if (!dragging || dragging.fromCol === toCol) return;
+  const moveToCol = async (candidate, fromCol, toCol) => {
+    if (fromCol === toCol) return;
+    const statusMap = { reviewing: "Reviewing", shortlisted: "Shortlisted", interview: "Interview", offer: "Offer" };
+    const newStatus = statusMap[toCol] || toCol;
     setBoard(prev => ({
       ...prev,
-      [dragging.fromCol]: prev[dragging.fromCol].filter(c => c.id !== dragging.candidate.id),
-      [toCol]: [...prev[toCol], { ...dragging.candidate, status: toCol }],
+      [fromCol]: prev[fromCol].filter(c => c.id !== candidate.id),
+      [toCol]:   [...prev[toCol], { ...candidate, status: newStatus }],
     }));
+    await supabase.from("candidates").update({ status: newStatus }).eq("id", candidate.id);
+  };
+
+  const handleDrop = (toCol) => {
+    if (!dragging || dragging.fromCol === toCol) return;
+    moveToCol(dragging.candidate, dragging.fromCol, toCol);
     setDragging(null);
   };
 
-  // Mobile: move card to next/prev stage
   const moveCard = (candidate, fromCol, direction) => {
     const idx = COLUMNS.findIndex(c => c.id === fromCol);
     const toIdx = idx + direction;
     if (toIdx < 0 || toIdx >= COLUMNS.length) return;
-    const toCol = COLUMNS[toIdx].id;
-    setBoard(prev => ({
-      ...prev,
-      [fromCol]: prev[fromCol].filter(c => c.id !== candidate.id),
-      [toCol]: [...prev[toCol], { ...candidate, status: toCol }],
-    }));
+    moveToCol(candidate, fromCol, COLUMNS[toIdx].id);
   };
 
   const totalCandidates = Object.values(board).flat().length;
@@ -141,39 +172,44 @@ export default function HRShortlist() {
                     .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
                     .map((candidate, i) => {
                       const colIdx = COLUMNS.findIndex(c => c.id === activeCol);
+                      const score = candidate.ai_score ?? 0;
+                      const skills = Array.isArray(candidate.skills) ? candidate.skills : [];
                       return (
-                        <div key={i} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+                        <div key={candidate.id ?? i} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
                           <div className="flex items-center gap-3 mb-3">
                             <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                              style={{ background: candidate.color }}>
-                              {candidate.avatar}
+                              style={{ background: avatarColor(candidate.name, i) }}>
+                              {initials(candidate.name)}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-bold text-[#1E293B] truncate">{candidate.name}</div>
-                              <div className="text-xs text-slate-400 truncate">{candidate.role}</div>
+                              <div className="text-xs text-slate-400 truncate">{candidate.role || "—"}</div>
                             </div>
-                            <span className={`text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 ${
-                              candidate.score >= 85 ? "bg-green-100 text-green-700" :
-                              candidate.score >= 70 ? "bg-yellow-100 text-yellow-700" :
-                              "bg-red-100 text-red-700"
-                            }`}>{candidate.score}</span>
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 ${scoreColor(score)}`}>
+                              {score}
+                            </span>
                           </div>
 
-                          <div className="flex flex-wrap gap-1 mb-3">
-                            {candidate.skills.slice(0,3).map(s => (
-                              <span key={s} className="text-xs bg-[#EFF6FF] text-[#1253A4] px-2 py-0.5 rounded-md">
-                                {s}
-                              </span>
-                            ))}
-                          </div>
+                          {skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {skills.slice(0,3).map(s => (
+                                <span key={s} className="text-xs bg-[#EFF6FF] text-[#1253A4] px-2 py-0.5 rounded-md">
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          )}
 
                           <div className="flex items-center justify-between mb-3">
                             <div className="text-xs text-slate-400">
-                              📍 {candidate.location} · {candidate.exp} yrs
+                              {candidate.location ? `📍 ${candidate.location}` : ""}
+                              {candidate.experience_years != null ? ` · ${candidate.experience_years} yrs` : ""}
                             </div>
-                            <span className="text-xs text-[#0EA5C9] font-bold">
-                              {candidate.jd_match}% match
-                            </span>
+                            {candidate.jd_match > 0 && (
+                              <span className="text-xs text-[#0EA5C9] font-bold">
+                                {candidate.jd_match}% match
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex gap-2">
@@ -227,51 +263,57 @@ export default function HRShortlist() {
 
                 {/* Cards */}
                 {board[col.id]
-                  .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
-                  .map((candidate, i) => (
-                  <div key={i}
-                    draggable
-                    onDragStart={() => handleDragStart(candidate, col.id)}
-                    className="bg-white rounded-xl border border-[#E2E8F0] p-4 mb-3 cursor-grab hover:shadow-md transition-all active:opacity-50">
+                  .filter(c => c.name?.toLowerCase().includes(search.toLowerCase()))
+                  .map((candidate, i) => {
+                    const score = candidate.ai_score ?? 0;
+                    const skills = Array.isArray(candidate.skills) ? candidate.skills : [];
+                    return (
+                    <div key={candidate.id ?? i}
+                      draggable
+                      onDragStart={() => handleDragStart(candidate, col.id)}
+                      className="bg-white rounded-xl border border-[#E2E8F0] p-4 mb-3 cursor-grab hover:shadow-md transition-all active:opacity-50">
 
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                        style={{ background: candidate.color }}>
-                        {candidate.avatar}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                          style={{ background: avatarColor(candidate.name, i) }}>
+                          {initials(candidate.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-[#1E293B] truncate">{candidate.name}</div>
+                          <div className="text-xs text-slate-400 truncate">{candidate.role || "—"}</div>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold text-[#1E293B] truncate">{candidate.name}</div>
-                        <div className="text-xs text-slate-400 truncate">{candidate.role}</div>
+
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-1">
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full ${scoreColor(score)}`}>
+                            {score}
+                          </span>
+                          <span className="text-xs text-slate-400">score</span>
+                        </div>
+                        {candidate.jd_match > 0 && (
+                          <span className="text-xs text-[#0EA5C9] font-bold">
+                            {candidate.jd_match}% match
+                          </span>
+                        )}
+                      </div>
+
+                      {skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {skills.slice(0,2).map(s => (
+                            <span key={s} className="text-xs bg-[#EFF6FF] text-[#1253A4] px-2 py-0.5 rounded-md">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="text-xs text-slate-400">
+                        {candidate.location ? `📍 ${candidate.location}` : ""}
+                        {candidate.experience_years != null ? ` · ${candidate.experience_years} yrs` : ""}
                       </div>
                     </div>
-
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-1">
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                          candidate.score >= 85 ? "bg-green-100 text-green-700" :
-                          candidate.score >= 70 ? "bg-yellow-100 text-yellow-700" :
-                          "bg-red-100 text-red-700"
-                        }`}>{candidate.score}</span>
-                        <span className="text-xs text-slate-400">score</span>
-                      </div>
-                      <span className="text-xs text-[#0EA5C9] font-bold">
-                        {candidate.jd_match}% match
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {candidate.skills.slice(0,2).map(s => (
-                        <span key={s} className="text-xs bg-[#EFF6FF] text-[#1253A4] px-2 py-0.5 rounded-md">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="text-xs text-slate-400">
-                      📍 {candidate.location} · {candidate.exp} yrs
-                    </div>
-                  </div>
-                ))}
+                  )})}
 
                 {board[col.id].length === 0 && (
                   <div className="text-center py-8 text-slate-300">

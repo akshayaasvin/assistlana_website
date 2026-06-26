@@ -3,8 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import HRSidebar from "@/components/hr/HRSidebar";
 import { supabase } from "@/lib/supabase";
-import { Upload, FileText, CheckCircle, Bell, Search, X } from "lucide-react";
-import { RECENT_UPLOADS } from "@/lib/mockData";
+import { Upload, FileText, CheckCircle, Bell, X } from "lucide-react";
 
 const PARSE_STEPS = [
   { label:"Reading resume file",             icon:"📄" },
@@ -68,26 +67,36 @@ export default function HRUpload() {
   const router  = useRouter();
   const fileRef = useRef();
 
-  const [user,        setUser]        = useState(null);
-  const [drag,        setDrag]        = useState(false);
-  const [files,       setFiles]       = useState([]);
-  const [steps,       setSteps]       = useState(PARSE_STEPS.map(s => ({...s, status:"idle"})));
-  const [parsing,     setParsing]     = useState(false);
-  const [done,        setDone]        = useState(false);
-  const [saved,       setSaved]       = useState([]);
-  const [error,       setError]       = useState("");
-  const [backendMode, setBackendMode] = useState(false);
+  const MAX_FILE_MB = 10;
+
+  const [user,          setUser]          = useState(null);
+  const [drag,          setDrag]          = useState(false);
+  const [files,         setFiles]         = useState([]);
+  const [steps,         setSteps]         = useState(PARSE_STEPS.map(s => ({...s, status:"idle"})));
+  const [parsing,       setParsing]       = useState(false);
+  const [done,          setDone]          = useState(false);
+  const [saved,         setSaved]         = useState([]);
+  const [error,         setError]         = useState("");
+  const [backendMode,   setBackendMode]   = useState(false);
+  const [recentFromDB,  setRecentFromDB]  = useState([]);
 
   useEffect(() => {
     const stored = localStorage.getItem("hr_user");
-    if (!stored) router.push("/");
-    else setUser(JSON.parse(stored));
+    if (!stored) { router.push("/"); return; }
+    setUser(JSON.parse(stored));
 
     // Check if backend is running
     fetch("https://assistlana-backend.onrender.com/api/health")
       .then(r => r.json())
       .then(() => setBackendMode(true))
       .catch(() => setBackendMode(false));
+
+    // Load recent uploads from real DB
+    supabase.from("candidates")
+      .select("id,name,email,ai_score,registered_at")
+      .order("registered_at", { ascending: false })
+      .limit(5)
+      .then(({ data }) => setRecentFromDB(data || []));
   }, []);
 
   // ── Animate parse steps ──
@@ -144,19 +153,26 @@ export default function HRUpload() {
 
   // ── Add files to list ──
   const addFiles = (fileList) => {
-    const valid = [...fileList]
-      .filter(f => f.name.endsWith(".pdf") || f.name.endsWith(".docx"))
-      .map(f => ({
-        raw:           f,
-        name:          f.name,
-        size:          (f.size/1024).toFixed(0) + " KB",
-        status:        "ready",
-        candidateName: null,
-      }));
-    if (valid.length === 0) { setError("Only PDF or DOCX files accepted."); return; }
-    setError("");
-    setFiles(prev => [...prev, ...valid]);
-    setDone(false);
+    const errors = [];
+    const valid = [];
+    [...fileList].forEach(f => {
+      const ext = f.name.split(".").pop().toLowerCase();
+      if (!["pdf","docx","doc"].includes(ext)) {
+        errors.push(`${f.name}: unsupported format (PDF/DOCX only).`);
+        return;
+      }
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        errors.push(`${f.name}: exceeds ${MAX_FILE_MB} MB limit.`);
+        return;
+      }
+      valid.push({ raw: f, name: f.name, size: (f.size/1024).toFixed(0) + " KB", status: "ready", candidateName: null });
+    });
+    if (errors.length > 0) { setError(errors.join(" ")); }
+    else { setError(""); }
+    if (valid.length > 0) {
+      setFiles(prev => [...prev, ...valid]);
+      setDone(false);
+    }
   };
 
   const removeFile = (index) => setFiles(prev => prev.filter((_,i) => i !== index));
@@ -230,6 +246,13 @@ export default function HRUpload() {
     setSaved(results);
     setParsing(false);
     setDone(true);
+
+    // Refresh recent uploads from DB
+    supabase.from("candidates")
+      .select("id,name,email,ai_score,registered_at")
+      .order("registered_at", { ascending: false })
+      .limit(5)
+      .then(({ data }) => setRecentFromDB(data || []));
   };
 
   if (!user) return null;
@@ -254,13 +277,8 @@ export default function HRUpload() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="hidden sm:flex items-center gap-2 bg-[#F1F5F9] rounded-xl px-4 py-2">
-                <Search size={14} className="text-slate-400"/>
-                <input placeholder="Search..." className="bg-transparent text-sm outline-none w-24 md:w-32 text-slate-600"/>
-              </div>
               <button className="relative p-2 bg-[#F1F5F9] rounded-xl">
                 <Bell size={16} className="text-slate-500"/>
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"/>
               </button>
             </div>
           </div>
@@ -416,33 +434,39 @@ export default function HRUpload() {
                 </div>
               )}
 
-              {/* Recent Uploads with timestamp */}
+              {/* Recent Uploads — live from Supabase */}
               <div className="mt-6 bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-5">
-                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">📋 Recent Uploads & Applications</div>
-                <div className="space-y-3">
-                  {[...saved, ...RECENT_UPLOADS.slice(0, 3)].map((c, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-                      <div className="w-9 h-9 bg-[#1253A4] rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {(c.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-[#1E293B] truncate">{c.name}</div>
-                        <div className="text-xs text-slate-400 truncate">
-                          {c.file || "Resume uploaded"} · {c.time || "Just now"}
+                <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">📋 Recent Candidates in Database</div>
+                {recentFromDB.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 text-sm">
+                    No candidates in database yet. Upload resumes above.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentFromDB.map((c, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                        <div className="w-9 h-9 bg-[#1253A4] rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {(c.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-[#1E293B] truncate">{c.name}</div>
+                          <div className="text-xs text-slate-400 truncate">
+                            {c.email || "—"} · {c.registered_at ? new Date(c.registered_at).toLocaleDateString() : "Just now"}
+                          </div>
+                        </div>
+                        <div className="text-center flex-shrink-0">
+                          <div className={`text-sm font-bold ${
+                            (c.ai_score||0) >= 85 ? "text-green-600" :
+                            (c.ai_score||0) >= 70 ? "text-yellow-600" : "text-slate-400"
+                          }`}>
+                            {c.ai_score || 0}
+                          </div>
+                          <div className="text-xs text-slate-400">Score</div>
                         </div>
                       </div>
-                      <div className="text-center flex-shrink-0">
-                        <div className={`text-sm font-bold ${
-                          (c.ai_score||c.score||0) >= 85 ? "text-green-600" :
-                          (c.ai_score||c.score||0) >= 70 ? "text-yellow-600" : "text-slate-400"
-                        }`}>
-                          {c.ai_score || c.score || 0}
-                        </div>
-                        <div className="text-xs text-slate-400">Score</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

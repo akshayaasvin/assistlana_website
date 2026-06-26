@@ -65,10 +65,11 @@ export default function CandidateSettings() {
 
   const handleSave = async (section) => {
     if (section === "Profile") {
+      if (!profile.name.trim()) { setSaved("❌ Name cannot be empty."); setTimeout(() => setSaved(""), 3000); return; }
       const { error } = await supabase
         .from("candidates")
         .update({
-          name:      profile.name,
+          name:      profile.name.trim(),
           phone:     profile.phone,
           location:  profile.location,
           age:       profile.age ? parseInt(profile.age) : null,
@@ -78,9 +79,35 @@ export default function CandidateSettings() {
         .eq("email", user?.email || "");
 
       if (!error) {
+        // Keep localStorage name in sync
+        const stored = JSON.parse(localStorage.getItem("candidate_user") || "{}");
+        localStorage.setItem("candidate_user", JSON.stringify({ ...stored, name: profile.name.trim() }));
         setSaved("✅ Profile saved successfully!");
       } else {
         setSaved("❌ Save failed: " + error.message);
+      }
+    } else if (section === "Password") {
+      const { oldPassword, newPassword, confirmPassword } = passwords;
+      if (!oldPassword || !newPassword || !confirmPassword) {
+        setSaved("❌ Please fill in all password fields."); setTimeout(() => setSaved(""), 3000); return;
+      }
+      // Verify current password against DB
+      const { data: cand } = await supabase.from("candidates").select("password").eq("email", user.email).single();
+      if (!cand || cand.password !== oldPassword) {
+        setSaved("❌ Current password is incorrect."); setTimeout(() => setSaved(""), 3000); return;
+      }
+      if (newPassword.length < 6) {
+        setSaved("❌ New password must be at least 6 characters."); setTimeout(() => setSaved(""), 3000); return;
+      }
+      if (newPassword !== confirmPassword) {
+        setSaved("❌ New passwords do not match."); setTimeout(() => setSaved(""), 3000); return;
+      }
+      const { error } = await supabase.from("candidates").update({ password: newPassword }).eq("email", user.email);
+      if (!error) {
+        setPasswords({ oldPassword: "", newPassword: "", confirmPassword: "" });
+        setSaved("✅ Password updated successfully!");
+      } else {
+        setSaved("❌ Password update failed: " + error.message);
       }
     } else {
       setSaved(`✅ ${section} saved successfully!`);
@@ -88,7 +115,7 @@ export default function CandidateSettings() {
     setTimeout(() => setSaved(""), 3000);
   };
 
-  if (!user || !candidate) return (
+  if (!user) return (
     <div className="min-h-screen flex bg-[#F0F4FA]">
       <div className="w-56 bg-[#0B1D3A] min-h-screen flex-shrink-0 hidden md:block"/>
       <div className="flex-1 flex items-center justify-center">
@@ -140,15 +167,15 @@ export default function CandidateSettings() {
                   Personal Information
                 </div>
 
-                {/* Profile header from Supabase */}
+                {/* Profile header */}
                 <div className="flex items-center gap-4 mb-5 p-4 bg-[#F0FDF4] rounded-xl">
                   <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center text-white text-base md:text-lg font-bold bg-[#10B981] flex-shrink-0">
-                    {(candidate.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+                    {(profile.name||user?.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <div className="font-bold text-[#1E293B] truncate">{candidate.name}</div>
-                    <div className="text-sm text-[#10B981] truncate">{candidate.email}</div>
-                    <div className="text-xs text-slate-400">AI Score: {candidate.ai_score||0}/100</div>
+                    <div className="font-bold text-[#1E293B] truncate">{profile.name || user?.name}</div>
+                    <div className="text-sm text-[#10B981] truncate">{profile.email || user?.email}</div>
+                    <div className="text-xs text-slate-400">AI Score: {candidate?.ai_score||0}/100</div>
                   </div>
                 </div>
 
@@ -181,12 +208,12 @@ export default function CandidateSettings() {
                 <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
                   <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">📊 Your Stats</div>
                   {[
-                    ["AI Score",      (candidate.ai_score||0)+"/100"          ],
-                    ["JD Match",      (candidate.jd_match||0)+"%"             ],
-                    ["Experience",    (candidate.experience_years||"—")+" yrs"],
-                    ["Education",     candidate.education    || "—"           ],
-                    ["Location",      candidate.location     || "—"           ],
-                    ["Qualification", candidate.qualification|| "—"           ],
+                    ["AI Score",      (candidate?.ai_score||0)+"/100"          ],
+                    ["JD Match",      (candidate?.jd_match||0)+"%"             ],
+                    ["Experience",    (candidate?.experience_years||"—")+" yrs"],
+                    ["Education",     candidate?.education    || "—"           ],
+                    ["Location",      candidate?.location     || "—"           ],
+                    ["Qualification", candidate?.qualification|| "—"           ],
                   ].map(([l,v],i) => (
                     <div key={i} className="flex justify-between py-2.5 border-b border-[#F1F5F9] last:border-0 gap-2">
                       <span className="text-sm text-slate-400">{l}</span>
@@ -198,7 +225,7 @@ export default function CandidateSettings() {
                 <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
                   <div className="font-bold text-[#1E293B] mb-3 text-sm md:text-base">🔧 Your Skills</div>
                   <div className="flex flex-wrap gap-2">
-                    {(candidate.skills||[]).map((s,i) => (
+                    {(candidate?.skills||[]).map((s,i) => (
                       <span key={i} className="text-xs bg-[#F0FDF4] text-[#10B981] border border-[#A7F3D0] px-3 py-1.5 rounded-full font-medium">
                         {s}
                       </span>
