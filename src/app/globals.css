@@ -105,6 +105,12 @@ a, button { transition: all 0.15s ease; }
 .float-c { animation: floatC 7s ease-in-out infinite 0.5s; }
 .float-d { animation: floatD 4.5s ease-in-out infinite 2s; }
 
+/* Tech stack ticker */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
 /* Glassmorphism helper */
 .glass {
   background: rgba(255, 255, 255, 0.85);
