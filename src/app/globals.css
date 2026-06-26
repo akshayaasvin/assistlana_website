@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --primary:       #0284C7;
+  --primary:       #2563EB;
+  --primary-dark:  #1D4ED8;
+  --accent:        #06B6D4;
   --secondary:     #0D9488;
-  --gradient:      linear-gradient(135deg, #0284C7, #0D9488);
-  --gradient-soft: linear-gradient(135deg, #E0F2FE, #CCFBF1);
+  --gradient:      linear-gradient(135deg, #2563EB, #06B6D4);
+  --gradient-soft: linear-gradient(135deg, #EFF6FF, #ECFEFF);
   --bg:            #F8FAFC;
   --card:          #FFFFFF;
   --border:        #E2E8F0;
@@ -16,6 +18,10 @@
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -32,3 +38,77 @@ body {
 
 /* Smooth transitions */
 a, button { transition: all 0.15s ease; }
+
+/* Nav dropdown animation */
+@keyframes navDropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Floating card animations */
+@keyframes floatA {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50%       { transform: translateY(-12px) rotate(1deg); }
+}
+@keyframes floatB {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50%       { transform: translateY(-8px) rotate(-1deg); }
+}
+@keyframes floatC {
+  0%, 100% { transform: translateY(0px); }
+  33%       { transform: translateY(-6px); }
+  66%       { transform: translateY(-10px); }
+}
+@keyframes floatD {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+}
+
+/* Pulse glow */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2); }
+  50%       { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
+}
+
+/* Shimmer for skeleton/loading */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* Fade in up */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Counter reveal */
+@keyframes countReveal {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Scroll-reveal utility (apply via JS IntersectionObserver) */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Float helpers */
+.float-a { animation: floatA 5s ease-in-out infinite; }
+.float-b { animation: floatB 6s ease-in-out infinite 1s; }
+.float-c { animation: floatC 7s ease-in-out infinite 0.5s; }
+.float-d { animation: floatD 4.5s ease-in-out infinite 2s; }
+
+/* Glassmorphism helper */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}

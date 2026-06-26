@@ -6,13 +6,27 @@ import { Upload, CheckCircle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 const ROLES = [
-  "Web Development",
-  "Python + AI",
+  "AI Product Developer",
+  "AI Agent Developer",
+  "Full Stack Developer",
+  "Frontend Developer",
+  "Backend Developer",
+  "Data Analyst",
+  "Data Scientist",
+  "Machine Learning Engineer",
+  "Python Developer",
+  "React Developer",
+  "UI/UX Designer",
   "Digital Marketing",
-  "Data Analytics",
-  "HR & Recruitment",
-  "Graphic Design",
-  "Content Writing",
+  "HR Recruiter",
+  "Business Development Executive",
+  "Graphic Designer",
+  "Video Editor",
+  "QA Tester",
+  "DevOps Engineer",
+  "Cloud Engineer",
+  "Cyber Security Analyst",
+  "Others",
 ];
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Final Year", "PG", "Fresher"];
@@ -20,7 +34,7 @@ const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Final Year", "PG
 export default function InternshipApplyPage() {
   const [form, setForm] = useState({
     name:"", email:"", phone:"", college:"", department:"",
-    year_of_study:"", role:"", message:"",
+    year_of_study:"", role:"", other_role:"", message:"",
   });
   const [file,    setFile]    = useState(null);
   const [loading, setLoading] = useState(false);
@@ -33,7 +47,10 @@ export default function InternshipApplyPage() {
     setError("");
     const required = ["name","email","phone","college","department","year_of_study","role"];
     for (const k of required) {
-      if (!form[k]) { setError(`Please fill in: ${k.replace("_"," ")}`); return; }
+      if (!form[k]) { setError(`Please fill in: ${k.replace(/_/g," ")}`); return; }
+    }
+    if (form.role === "Others" && !form.other_role.trim()) {
+      setError("Please enter your preferred role."); return;
     }
     setLoading(true);
 
@@ -48,16 +65,21 @@ export default function InternshipApplyPage() {
       }
     }
 
+    const finalRole = form.role === "Others" ? form.other_role.trim() : form.role;
+
     const { error: dbErr } = await supabase.from("internship_applications").insert([{
-      ...form,
-      resume_url,
-      status: "Pending",
+      name: form.name, email: form.email, phone: form.phone,
+      college: form.college, department: form.department,
+      year_of_study: form.year_of_study, role: finalRole,
+      message: form.message, resume_url, status: "Pending",
     }]);
 
     if (dbErr) { setError("Submission failed: " + dbErr.message); setLoading(false); return; }
     setLoading(false);
     setSuccess(true);
   };
+
+  const displayRole = form.role === "Others" && form.other_role ? form.other_role : form.role;
 
   if (success) {
     return (
@@ -69,13 +91,13 @@ export default function InternshipApplyPage() {
             <h2 className="text-2xl font-extrabold text-[#0F172A] mb-2">Application Submitted!</h2>
             <p className="text-[#64748B] text-sm mb-4">
               We've received your application for the{" "}
-              <span className="font-semibold text-[#0284C7]">{form.role}</span> internship.
+              <span className="font-semibold text-[#2563EB]">{displayRole}</span> internship.
             </p>
             <div className="bg-[#DCFCE7] text-[#16A34A] rounded-full px-4 py-1.5 text-sm font-semibold inline-block mb-6">
-              ✅ {form.role} · Pending Review
+              ✅ {displayRole} · Pending Review
             </div>
             <Link href="/"
-              className="block w-full py-2.5 bg-gradient-to-r from-[#0284C7] to-[#0D9488] text-white rounded-xl font-semibold text-sm hover:opacity-90 text-center">
+              className="block w-full py-2.5 bg-gradient-to-r from-[#2563EB] to-[#06B6D4] text-white rounded-xl font-semibold text-sm hover:opacity-90 text-center">
               Back to Home
             </Link>
           </div>
@@ -92,14 +114,14 @@ export default function InternshipApplyPage() {
       <div className="bg-white border-b border-[#E2E8F0] py-10 px-4 text-center">
         <h1 className="text-3xl md:text-4xl font-extrabold text-[#0F172A] mb-2">
           Launch Your Career with{" "}
-          <span className="bg-gradient-to-r from-[#0284C7] to-[#0D9488] bg-clip-text text-transparent">
-            ASSISTLANA Internship
+          <span className="bg-gradient-to-r from-[#2563EB] to-[#06B6D4] bg-clip-text text-transparent">
+            AssistLana AI
           </span>
         </h1>
-        <p className="text-[#64748B] text-sm mb-4">Real-world experience at Pondicherry's leading HR-tech company</p>
+        <p className="text-[#64748B] text-sm mb-4">Real-world experience at Pondicherry's leading AI-HR tech company</p>
         <div className="flex flex-wrap justify-center gap-3">
           {["💰 Paid Stipend","🎓 Certificate","💼 Job Referral"].map(b => (
-            <span key={b} className="bg-[#F0FDFA] border border-[#99F6E4] text-[#0D9488] px-4 py-1.5 rounded-full text-xs font-semibold">{b}</span>
+            <span key={b} className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] px-4 py-1.5 rounded-full text-xs font-semibold">{b}</span>
           ))}
         </div>
       </div>
@@ -127,39 +149,46 @@ export default function InternshipApplyPage() {
                 <label className="block text-sm font-semibold text-[#64748B] mb-1.5">{f.label}</label>
                 <input type={f.type} placeholder={f.ph} value={form[f.key]}
                   onChange={e => set(f.key, e.target.value)}
-                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#0284C7] outline-none"/>
+                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none transition-colors"/>
               </div>
             ))}
 
             <div>
               <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Year of Study *</label>
               <select value={form.year_of_study} onChange={e => set("year_of_study", e.target.value)}
-                className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#0284C7] outline-none bg-white text-[#0F172A]">
+                className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none bg-white text-[#0F172A] transition-colors">
                 <option value="">Select year...</option>
                 {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
           </div>
 
+          {/* Role dropdown */}
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Internship Role *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {ROLES.map(r => (
-                <button key={r} type="button" onClick={() => set("role", r)}
-                  className={`py-2 px-3 rounded-xl text-xs font-semibold border-2 transition-all text-left ${
-                    form.role === r
-                      ? "border-[#0284C7] bg-[#EFF6FF] text-[#0284C7]"
-                      : "border-[#E2E8F0] text-[#64748B] hover:border-[#0284C7]/40"
-                  }`}>
-                  {r}
-                </button>
-              ))}
-            </div>
+            <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Job Role Selection *</label>
+            <select value={form.role} onChange={e => set("role", e.target.value)}
+              className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none bg-white text-[#0F172A] transition-colors">
+              <option value="">Select a role...</option>
+              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
           </div>
+
+          {/* Others textbox */}
+          {form.role === "Others" && (
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Preferred Role *</label>
+              <input
+                type="text"
+                placeholder="Enter your preferred role"
+                value={form.other_role}
+                onChange={e => set("other_role", e.target.value)}
+                className="w-full px-4 py-2.5 border border-[#2563EB] rounded-xl text-sm focus:border-[#2563EB] outline-none transition-colors bg-blue-50/30"/>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Resume (PDF, max 5MB)</label>
-            <label className="flex items-center gap-3 border-2 border-dashed border-[#E2E8F0] rounded-xl px-4 py-3 cursor-pointer hover:border-[#0284C7] transition-all">
+            <label className="flex items-center gap-3 border-2 border-dashed border-[#E2E8F0] rounded-xl px-4 py-3 cursor-pointer hover:border-[#2563EB] transition-all">
               <Upload size={18} className="text-[#64748B]"/>
               <span className="text-sm text-[#64748B]">{file ? file.name : "Click to upload PDF"}</span>
               <input type="file" accept=".pdf" className="hidden" onChange={e => setFile(e.target.files[0])}/>
@@ -170,11 +199,11 @@ export default function InternshipApplyPage() {
             <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Why do you want this internship? (optional)</label>
             <textarea placeholder="Tell us about your motivation and goals..." value={form.message}
               onChange={e => set("message", e.target.value)} rows={3}
-              className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#0284C7] outline-none resize-none"/>
+              className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none resize-none transition-colors"/>
           </div>
 
           <button onClick={handleSubmit} disabled={loading}
-            className="w-full bg-gradient-to-r from-[#0284C7] to-[#0D9488] text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-60 hover:opacity-90 transition-all">
+            className="w-full bg-gradient-to-r from-[#2563EB] to-[#06B6D4] text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-60 hover:opacity-90 transition-all shadow-md shadow-blue-200">
             {loading ? "Submitting..." : "Submit Application →"}
           </button>
         </div>
