@@ -2,35 +2,39 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  Upload, Users, Briefcase, Layout, GraduationCap,
-  BarChart2, Settings, LogOut, Menu, X
+  LayoutDashboard, Users, GraduationCap, Briefcase,
+  Building2, Settings, LogOut, Menu, X, UserCheck
 } from "lucide-react";
 
 const NAV = [
-  { section: "RECRUITMENT", items: [
-    { label:"Upload Resumes", icon: Upload,       href:"/hr/upload"      },
-    { label:"Candidates",     icon: Users,        href:"/hr/candidates"  },
-    { label:"Post Jobs",      icon: Briefcase,    href:"/hr/jobs"        },
-    { label:"Shortlist",      icon: Layout,       href:"/hr/shortlist"   },
-    { label:"Internships",    icon: GraduationCap,href:"/hr/internships" },
+  { section: "OVERVIEW", items: [
+    { label:"Dashboard",   icon: LayoutDashboard, href:"/admin/dashboard"   },
   ]},
-  { section: "INSIGHTS", items: [
-    { label:"Analytics",      icon: BarChart2,    href:"/hr/analytics"   },
-    { label:"Settings",       icon: Settings,     href:"/hr/settings"    },
+  { section: "USERS", items: [
+    { label:"HR Users",    icon: UserCheck,       href:"/admin/hr-users"    },
+    { label:"Job Seekers", icon: Users,           href:"/admin/candidates"  },
+  ]},
+  { section: "CONTENT", items: [
+    { label:"All Jobs",    icon: Briefcase,       href:"/admin/jobs"        },
+    { label:"Internships", icon: GraduationCap,   href:"/admin/internships" },
+  ]},
+  { section: "SYSTEM", items: [
+    { label:"Organizations",icon: Building2,      href:"/admin/orgs"        },
+    { label:"Settings",    icon: Settings,        href:"/admin/settings"    },
   ]},
 ];
 
-export default function HRSidebar({ user }) {
+export default function AdminSidebar({ user }) {
   const router   = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem("hr_user");
-    router.push("/");
+    localStorage.removeItem("admin_user");
+    router.push("/admin/login");
   };
 
-  const initials = user?.name?.split(" ").map(n => n[0]).join("").slice(0,2) || "HR";
+  const initials = user?.name?.split(" ").map(n => n[0]).join("").slice(0,2) || "AD";
 
   return (
     <>
@@ -51,7 +55,7 @@ export default function HRSidebar({ user }) {
             <div className="text-base font-extrabold bg-gradient-to-r from-[#0284C7] to-[#0D9488] bg-clip-text text-transparent">
               ASSISTLANA
             </div>
-            <div className="text-[10px] text-[#64748B]">HR Portal</div>
+            <div className="text-[10px] text-[#64748B]">Admin Portal</div>
           </div>
           <button onClick={() => setOpen(false)} className="md:hidden text-[#64748B]"><X size={18}/></button>
         </div>
@@ -64,7 +68,7 @@ export default function HRSidebar({ user }) {
               </div>
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
                   <button key={item.label}
                     onClick={() => { router.push(item.href); setOpen(false); }}
@@ -84,12 +88,12 @@ export default function HRSidebar({ user }) {
 
         <div className="p-3 border-t border-[#E2E8F0]">
           <div className="flex items-center gap-2.5 mb-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-[#0284C7] to-[#0D9488] rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            <div className="w-8 h-8 bg-gradient-to-r from-[#7C3AED] to-[#0284C7] rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
               {initials}
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-[#0F172A] truncate">{user?.name || "HR User"}</div>
-              <div className="text-[10px] text-[#64748B] truncate">{user?.role || "HR"}</div>
+              <div className="text-xs font-semibold text-[#0F172A] truncate">{user?.name || "Admin"}</div>
+              <div className="text-[10px] text-[#64748B] truncate">{user?.role || "Admin"}</div>
             </div>
           </div>
           <button onClick={handleLogout}

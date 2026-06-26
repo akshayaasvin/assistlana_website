@@ -1,252 +1,155 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 import CandidateSidebar from "@/components/candidate/CandidateSidebar";
-import { CANDIDATES, JOBS, APPLICATIONS, AI_SUGGESTIONS } from "@/lib/mockData";
-import { Bell, Search, ArrowRight } from "lucide-react";
+
+function timeAgo(ts) {
+  if (!ts) return "";
+  const d = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+  if (d === 0) return "Today";
+  if (d === 1) return "1 day ago";
+  return `${d} days ago`;
+}
+
+function statusColor(s) {
+  if (s === "Shortlisted") return "bg-[#DCFCE7] text-[#16A34A]";
+  if (s === "Rejected")    return "bg-[#FEE2E2] text-[#DC2626]";
+  if (s === "Interview")   return "bg-[#DBEAFE] text-[#1D4ED8]";
+  return "bg-[#F1F5F9] text-[#64748B]";
+}
 
 export default function CandidateDashboard() {
   const router = useRouter();
-  const [user,      setUser]      = useState(null);
-  const [candidate, setCandidate] = useState(null);
+  const [user,         setUser]         = useState(null);
+  const [applications, setApplications] = useState([]);
+  const [internCount,  setInternCount]  = useState(0);
+  const [resumeScore,  setResumeScore]  = useState(null);
+  const [mockCount,    setMockCount]    = useState(0);
+  const [loading,      setLoading]      = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem("candidate_user");
     if (!stored) { router.push("/"); return; }
     const u = JSON.parse(stored);
     setUser(u);
-    // Load from Supabase instead of mock
-    import("@/lib/supabase").then(({ supabase }) => {
-      supabase.from("candidates").select("*")
-        .eq("email", u.email).maybeSingle()
-        .then(({ data }) => {
-          if (data) setCandidate(data);
-          else setCandidate(CANDIDATES.find(c => c.email === u.email) || CANDIDATES[0]);
-        });
-    });
+
+    const load = async () => {
+      const [appRes, intRes, resumeRes, mockRes, candRes] = await Promise.all([
+        supabase.from("job_applications").select("*").eq("candidate_email", u.email).order("applied_at", { ascending: false }),
+        supabase.from("internship_applications").select("id").eq("email", u.email),
+        supabase.from("resume_suggestions").select("ats_score").eq("candidate_email", u.email).order("created_at", { ascending: false }).limit(1),
+        supabase.from("mock_interviews").select("id").eq("candidate_email", u.email),
+        supabase.from("candidates").select("ats_score").eq("email", u.email).single(),
+      ]);
+      setApplications(appRes.data || []);
+      setInternCount((intRes.data || []).length);
+      setMockCount((mockRes.data || []).length);
+      const score = resumeRes.data?.[0]?.ats_score || candRes.data?.ats_score || null;
+      setResumeScore(score);
+      setLoading(false);
+    };
+    load();
   }, []);
 
-  if (!user || !candidate) return null;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const myApplications = APPLICATIONS.filter(a => a.candidateId === candidate.id);
-  const scoreBreakdown = [
-    { label:"Skills Match", val: Math.round(candidate.score*0.4), max:40, color:"#0EA5C9" },
-    { label:"Experience",   val: Math.round(candidate.score*0.3), max:30, color:"#1253A4" },
-    { label:"Education",    val: Math.round(candidate.score*0.2), max:20, color:"#8B5CF6" },
-    { label:"Extras",       val: Math.round(candidate.score*0.1), max:10, color:"#10B981" },
-  ];
+  if (!user) return null;
 
   return (
-    <div className="min-h-screen flex bg-[#F0F4FA]">
+    <div className="min-h-screen bg-[#F8FAFC] flex">
       <CandidateSidebar user={user}/>
-      <div className="ml-0 md:ml-56 flex-1 w-full min-w-0">
-
+      <div className="ml-0 md:ml-56 flex-1 min-w-0">
         {/* Topbar */}
-        <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-8 py-3 md:py-4 sticky top-0 z-10">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0 pl-12 md:pl-0">
-              <div className="text-base md:text-lg font-bold text-[#1E293B]">My Dashboard</div>
-              <div className="text-xs text-slate-400 truncate">Welcome back, {user.name}!</div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="hidden sm:flex items-center gap-2 bg-[#F1F5F9] rounded-xl px-3 py-2">
-                <Search size={14} className="text-slate-400"/>
-                <input placeholder="Search jobs..." className="bg-transparent text-sm outline-none w-24 md:w-32 text-slate-600"/>
-              </div>
-              <button className="relative p-2 bg-[#F1F5F9] rounded-xl">
-                <Bell size={16} className="text-slate-500"/>
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"/>
-              </button>
-            </div>
+        <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-8 py-4 sticky top-0 z-10">
+          <div className="pl-12 md:pl-0">
+            <h1 className="text-xl font-bold text-[#0F172A]">{greeting}, {user.name?.split(" ")[0]}! 👋</h1>
+            <p className="text-sm text-[#64748B]">Track your job search and career growth</p>
           </div>
         </div>
 
         <div className="p-4 md:p-8">
-
-          {/* ── MOBILE: Score + Stats stacked ── */}
-          <div className="md:hidden space-y-4 mb-6">
-
-            {/* Score Card — compact on mobile */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4">
-              <div className="text-sm font-bold text-slate-500 mb-3">Your AI Score</div>
-              <div className="flex items-center gap-5">
-                <div className="relative w-24 h-24 flex-shrink-0">
-                  <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-                    <circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" strokeWidth="10"/>
-                    <circle cx="60" cy="60" r="50" fill="none" stroke="#10B981" strokeWidth="10"
-                      strokeDasharray={`${(candidate.score/100)*314} 314`} strokeLinecap="round"/>
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <div className="text-2xl font-bold text-[#1E293B]">{candidate.score}</div>
-                    <div className="text-xs text-slate-400">/ 100</div>
-                  </div>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[
+              { icon:"💼", label:"Jobs Applied",         value: applications.length,                          color:"from-[#0284C7]/15 to-[#0284C7]/5" },
+              { icon:"🎓", label:"Internship Applied",   value: internCount,                                  color:"from-[#0D9488]/15 to-[#0D9488]/5" },
+              { icon:"📄", label:"Resume AI Score",      value: resumeScore ? resumeScore+"%" : "N/A",        color:"from-[#7C3AED]/15 to-[#7C3AED]/5" },
+              { icon:"🎤", label:"Mock Interviews Done", value: mockCount,                                    color:"from-[#F59E0B]/15 to-[#F59E0B]/5" },
+            ].map((s,i) => (
+              <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 bg-gradient-to-r ${s.color}`}>
+                  {s.icon}
                 </div>
-                <div className="flex-1 space-y-2">
-                  {scoreBreakdown.map((s,i) => (
-                    <div key={i}>
-                      <div className="flex justify-between text-xs mb-0.5">
-                        <span className="text-slate-500">{s.label}</span>
-                        <span className="font-bold" style={{ color:s.color }}>{s.val}/{s.max}</span>
-                      </div>
-                      <div className="h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width:`${(s.val/s.max)*100}%`, background:s.color }}/>
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <div className="text-2xl font-extrabold text-[#0F172A]">{loading ? "—" : s.value}</div>
+                  <div className="text-xs text-[#64748B]">{s.label}</div>
                 </div>
               </div>
-            </div>
-
-            {/* Stats grid — 2x2 on mobile */}
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label:"Jobs Applied",   val: myApplications.length,                                              color:"#1253A4", icon:"📋" },
-                { label:"Shortlisted",    val: myApplications.filter(a=>a.status==="Shortlisted").length,          color:"#10B981", icon:"⭐" },
-                { label:"JD Match Score", val: candidate.jd_match+"%",                                             color:"#0EA5C9", icon:"🎯" },
-                { label:"Active Jobs",    val: JOBS.filter(j=>j.status==="Active").length,                         color:"#8B5CF6", icon:"💼" },
-              ].map((s,i) => (
-                <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] p-3">
-                  <div className="text-xl mb-1">{s.icon}</div>
-                  <div className="text-xl font-bold mb-0.5" style={{ color:s.color }}>{s.val}</div>
-                  <div className="text-xs text-slate-400">{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4">
-              <div className="text-sm font-bold text-slate-600 mb-3">Quick Actions</div>
-              <div className="flex flex-col gap-2">
-                {[
-                  { label:"Browse Jobs",     href:"/candidate/jobs",         color:"#1253A4" },
-                  { label:"Update Resume",   href:"/candidate/resume",       color:"#10B981" },
-                  { label:"My Applications", href:"/candidate/applications", color:"#8B5CF6" },
-                ].map((a,i) => (
-                  <button key={i} onClick={() => router.push(a.href)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"
-                    style={{ background:a.color }}>
-                    {a.label} <ArrowRight size={14}/>
-                  </button>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* ── DESKTOP: Original 3-column layout ── */}
-          <div className="hidden md:grid grid-cols-3 gap-6 mb-8">
-
-            {/* Score Card */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 col-span-1">
-              <div className="text-sm font-bold text-slate-500 mb-4">Your AI Score</div>
-              <div className="flex items-center justify-center mb-4">
-                <div className="relative w-32 h-32">
-                  <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-                    <circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" strokeWidth="10"/>
-                    <circle cx="60" cy="60" r="50" fill="none" stroke="#10B981" strokeWidth="10"
-                      strokeDasharray={`${(candidate.score/100)*314} 314`} strokeLinecap="round"/>
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <div className="text-3xl font-bold text-[#1E293B]">{candidate.score}</div>
-                    <div className="text-xs text-slate-400">/ 100</div>
-                  </div>
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            {[
+              { icon:"📄", title:"Improve Your Resume",  desc:"Get AI suggestions to boost your ATS score",  href:"/candidate/resume",        color:"from-[#7C3AED] to-[#0284C7]" },
+              { icon:"💼", title:"Browse New Jobs",       desc:"Discover jobs matching your skills",           href:"/candidate/jobs",           color:"from-[#0284C7] to-[#0D9488]" },
+              { icon:"🎓", title:"Apply for Internship",  desc:"Internship applications are open",             href:"/candidate/internship",     color:"from-[#0D9488] to-[#10B981]" },
+              { icon:"🎤", title:"Practice Interview",    desc:"Start an AI mock interview now",               href:"/candidate/mock-interview", color:"from-[#F59E0B] to-[#EF4444]" },
+            ].map((a,i) => (
+              <Link key={i} href={a.href}
+                className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm hover:shadow-md hover:border-[#0284C7]/30 transition-all flex items-start gap-4">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl bg-gradient-to-r ${a.color} flex-shrink-0`}>
+                  {a.icon}
                 </div>
-              </div>
-              <div className="space-y-2">
-                {scoreBreakdown.map((s,i) => (
-                  <div key={i}>
-                    <div className="flex justify-between text-xs mb-0.5">
-                      <span className="text-slate-500">{s.label}</span>
-                      <span className="font-bold" style={{ color:s.color }}>{s.val}/{s.max}</span>
-                    </div>
-                    <div className="h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width:`${(s.val/s.max)*100}%`, background:s.color }}/>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="col-span-2 grid grid-cols-2 gap-4">
-              {[
-                { label:"Jobs Applied",   val: myApplications.length,                                    color:"#1253A4", icon:"📋" },
-                { label:"Shortlisted",    val: myApplications.filter(a=>a.status==="Shortlisted").length, color:"#10B981", icon:"⭐" },
-                { label:"JD Match Score", val: candidate.jd_match+"%",                                    color:"#0EA5C9", icon:"🎯" },
-                { label:"Active Jobs",    val: JOBS.filter(j=>j.status==="Active").length,                color:"#8B5CF6", icon:"💼" },
-              ].map((s,i) => (
-                <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] p-5">
-                  <div className="text-2xl mb-2">{s.icon}</div>
-                  <div className="text-2xl font-bold mb-1" style={{ color:s.color }}>{s.val}</div>
-                  <div className="text-xs text-slate-400">{s.label}</div>
+                <div>
+                  <div className="font-bold text-[#0F172A] text-sm mb-0.5">{a.title}</div>
+                  <div className="text-xs text-[#64748B]">{a.desc}</div>
                 </div>
-              ))}
-
-              {/* Quick Actions */}
-              <div className="col-span-2 bg-white rounded-2xl border border-[#E2E8F0] p-5">
-                <div className="text-sm font-bold text-slate-600 mb-3">Quick Actions</div>
-                <div className="flex gap-3">
-                  {[
-                    { label:"Browse Jobs",     href:"/candidate/jobs",         color:"#1253A4" },
-                    { label:"Update Resume",   href:"/candidate/resume",       color:"#10B981" },
-                    { label:"My Applications", href:"/candidate/applications", color:"#8B5CF6" },
-                  ].map((a,i) => (
-                    <button key={i} onClick={() => router.push(a.href)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"
-                      style={{ background:a.color }}>
-                      {a.label} <ArrowRight size={14}/>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+              </Link>
+            ))}
           </div>
 
-          {/* ── AI Suggestions + Recent Jobs (both mobile and desktop) ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-
-            {/* AI Suggestions */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
-              <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">🤖 AI Resume Suggestions</div>
-              <div className="space-y-3">
-                {(candidate?.ai_suggestions?.length > 0 ? candidate.ai_suggestions.slice(0,4) : AI_SUGGESTIONS.slice(0,4)).map((s,i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 bg-[#F8FAFF] rounded-xl border border-[#E2E8F0]">
-                    <div className="w-5 h-5 bg-[#EFF6FF] rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-[#1253A4] mt-0.5">
-                      {i+1}
-                    </div>
-                    <div className="text-xs md:text-sm text-slate-600">{s}</div>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => router.push("/candidate/resume")}
-                className="mt-4 w-full py-2.5 bg-[#10B981] text-white rounded-xl text-sm font-semibold hover:bg-[#059669] transition-all">
-                Update Resume with AI Tips →
-              </button>
+          {/* Recent Applications */}
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm">
+            <div className="p-5 border-b border-[#E2E8F0] flex items-center justify-between">
+              <h2 className="font-bold text-[#0F172A]">Recent Applications</h2>
+              <Link href="/candidate/applications" className="text-xs text-[#0284C7] font-semibold hover:underline">View All →</Link>
             </div>
-
-            {/* Recent Jobs */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6">
-              <div className="font-bold text-[#1E293B] mb-4 text-sm md:text-base">💼 Latest Job Openings</div>
-              <div className="space-y-3">
-                {JOBS.slice(0,4).map((job,i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-                    <div className="w-8 h-8 md:w-9 md:h-9 bg-[#EFF6FF] rounded-xl flex items-center justify-center flex-shrink-0 text-sm md:text-base">
-                      💼
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-[#1E293B] truncate">{job.title}</div>
-                      <div className="text-xs text-slate-400 truncate">{job.dept} · {job.posted}</div>
-                    </div>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold flex-shrink-0 whitespace-nowrap">
-                      {job.status}
-                    </span>
-                  </div>
-                ))}
+            {loading ? (
+              <div className="p-8 text-center text-[#64748B] text-sm">Loading...</div>
+            ) : applications.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="text-3xl mb-2">📭</div>
+                <p className="text-sm text-[#64748B]">No applications yet.</p>
+                <Link href="/candidate/jobs" className="inline-block mt-3 text-sm text-[#0284C7] font-semibold hover:underline">Browse Jobs →</Link>
               </div>
-              <button onClick={() => router.push("/candidate/jobs")}
-                className="mt-4 w-full py-2.5 bg-[#1253A4] text-white rounded-xl text-sm font-semibold hover:bg-[#0d47a1] transition-all">
-                View All Jobs →
-              </button>
-            </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[#F1F5F9]">
+                      {["Job Title","Applied","Status"].map(h => (
+                        <th key={h} className="text-left text-xs font-semibold text-[#64748B] uppercase tracking-wide py-3 px-5">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {applications.slice(0,5).map((a,i) => (
+                      <tr key={i} className="border-b border-[#F8FAFC] hover:bg-[#F8FAFC]">
+                        <td className="py-3 px-5 text-sm font-semibold text-[#0F172A]">{a.job_title || "Job Application"}</td>
+                        <td className="py-3 px-5 text-xs text-[#64748B]">{timeAgo(a.applied_at)}</td>
+                        <td className="py-3 px-5">
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(a.status)}`}>{a.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>

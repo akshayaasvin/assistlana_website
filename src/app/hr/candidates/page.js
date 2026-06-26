@@ -132,7 +132,7 @@ export default function HRCandidates() {
   if (!user) return null;
 
   if (loading) return (
-    <div className="min-h-screen flex bg-[#F0F4FA]">
+    <div className="min-h-screen flex bg-[#F8FAFC]">
       <HRSidebar user={user}/>
       <div className="ml-0 md:ml-56 flex-1 flex items-center justify-center">
         <div className="text-center">
@@ -144,7 +144,7 @@ export default function HRCandidates() {
   );
 
   return (
-    <div className="min-h-screen flex bg-[#F0F4FA]">
+    <div className="min-h-screen flex bg-[#F8FAFC]">
       <HRSidebar user={user}/>
       <div className="ml-0 md:ml-56 flex-1 w-full min-w-0">
 
