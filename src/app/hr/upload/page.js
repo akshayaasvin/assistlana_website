@@ -89,7 +89,11 @@ export default function HRUpload() {
     setUser(u);
 
     // Always re-verify status from DB (localStorage can be stale)
-    supabase.from("hr_registry").select("status").eq("email", u.email).single()
+    // Prefer hr_login_id lookup (new credential-based auth); fall back to email
+    const query = u.hr_login_id
+      ? supabase.from("hr_registry").select("status").eq("hr_login_id", u.hr_login_id).single()
+      : supabase.from("hr_registry").select("status").eq("email", u.email).single();
+    query
       .then(({ data }) => setHrStatus(data?.status || "pending"))
       .catch(() => setHrStatus("pending"));
 

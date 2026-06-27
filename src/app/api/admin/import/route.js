@@ -65,16 +65,41 @@ export async function POST(request) {
       const { data: existing } = await sb.from("hr_registry").select("email").in("email", emails);
       const existingSet = new Set((existing || []).map(r => r.email));
 
+      // Fetch all existing login IDs once so we can guarantee uniqueness in this batch
+      const { data: existingIds } = await sb.from("hr_registry").select("hr_login_id");
+      const usedIds = new Set((existingIds || []).map(r => r.hr_login_id).filter(Boolean));
+
+      const pwChars  = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+      const genPassword = () => Array.from({ length: 8 }, () => pwChars[Math.floor(Math.random() * pwChars.length)]).join("");
+      const genHrId = () => {
+        let id;
+        do { id = "ASLHR" + String(Math.floor(1000 + Math.random() * 9000)); } while (usedIds.has(id));
+        usedIds.add(id);
+        return id;
+      };
+
       const toInsert = [];
+      const credentials = [];
       for (const row of rows) {
         if (!row.email || !row.name) { failed.push({ row: row.email || "?", reason: "Missing name or email" }); continue; }
         if (existingSet.has(row.email)) { skipped++; continue; }
+        const hr_login_id   = genHrId();
+        const plain_password = genPassword();
         toInsert.push({
-          name:    String(row.name || "").trim(),
-          email:   String(row.email || "").trim().toLowerCase(),
-          phone:   String(row.phone || ""),
-          company: String(row.company || "ASSISTLANA"),
-          status:  "approved", // auto-approve on import
+          name:         String(row.name || "").trim(),
+          email:        String(row.email || "").trim().toLowerCase(),
+          phone:        String(row.phone || ""),
+          company:      String(row.company || "ASSISTLANA"),
+          status:       "approved",
+          hr_login_id,
+          password:     plain_password,
+        });
+        credentials.push({
+          name:         String(row.name || "").trim(),
+          company:      String(row.company || "ASSISTLANA"),
+          email:        String(row.email || "").trim().toLowerCase(),
+          hr_login_id,
+          plain_password,
         });
       }
 
@@ -86,6 +111,8 @@ export async function POST(request) {
           success += data?.length || 0;
         }
       }
+
+      return NextResponse.json({ success, skipped, failed: failed.length, details: failed, credentials });
 
     } else if (type === "jobs") {
       const toInsert = [];

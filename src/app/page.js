@@ -595,7 +595,7 @@ export default function HomePage() {
                 <div>
                   <div className="text-sm font-semibold text-[#64748B] mb-4 text-center">Who are you signing in as?</div>
                   <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setPortalChoice("hr")}
+                    <button onClick={() => { setShowSignIn(false); resetModal(); router.push("/hr/login"); }}
                       className="flex flex-col items-center gap-2 p-5 border-2 border-[#E2E8F0] rounded-2xl hover:border-[#2563EB] hover:bg-blue-50 transition-all">
                       <Users size={26} className="text-[#2563EB]"/>
                       <div className="font-bold text-[#0F172A] text-sm">HR Team</div>

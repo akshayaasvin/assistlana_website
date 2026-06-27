@@ -62,11 +62,12 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   // Tab data
-  const [pendingHR,   setPendingHR]   = useState([]);
-  const [allHR,       setAllHR]       = useState([]);
-  const [candidates,  setCandidates]  = useState([]);
-  const [jobs,        setJobs]        = useState([]);
-  const [counts,      setCounts]      = useState({});
+  const [pendingHR,        setPendingHR]        = useState([]);
+  const [allHR,            setAllHR]            = useState([]);
+  const [candidates,       setCandidates]       = useState([]);
+  const [jobs,             setJobs]             = useState([]);
+  const [counts,           setCounts]           = useState({});
+  const [credentialsModal, setCredentialsModal] = useState(null); // { hr_login_id, password, hr_name, company_name, email }
 
   useEffect(() => {
     try {
@@ -127,8 +128,16 @@ export default function AdminDashboard() {
 
   const hrAction = async (action, id) => {
     const r = await adminAction(action, id, ADMIN_UID);
-    if (r.success) { showToast(r.message); loadAll(); }
-    else showToast("Error: " + r.error);
+    if (r.success) {
+      if (action === "approve_hr" && r.credentials) {
+        setCredentialsModal(r.credentials);
+      } else {
+        showToast(r.message);
+      }
+      loadAll();
+    } else {
+      showToast("Error: " + r.error);
+    }
   };
 
   const logout = () => {
@@ -294,6 +303,14 @@ export default function AdminDashboard() {
             candidates={candidates} allHR={allHR} jobs={jobs}/>
         )}
       </div>
+
+      {/* Credentials Modal */}
+      {credentialsModal && (
+        <CredentialsModal
+          credentials={credentialsModal}
+          onClose={() => { setCredentialsModal(null); loadAll(); }}
+        />
+      )}
     </div>
   );
 }
@@ -728,13 +745,58 @@ function ImportExportTab({ adminId, showToast, onImportDone, candidates, allHR, 
 
         {/* Import result */}
         {importResult && (
-          <div className="mt-3 p-4 bg-green-50 border border-green-200 rounded-xl text-sm">
-            <div className="font-bold text-green-700 mb-1">Import Complete</div>
-            <div className="text-green-600">✅ Imported: {importResult.success}</div>
-            <div className="text-yellow-600">⏭️ Skipped (duplicates): {importResult.skipped}</div>
-            <div className="text-red-600">❌ Failed: {importResult.failed}</div>
-            {importResult.details?.length > 0 && (
-              <div className="mt-2 text-xs text-red-500">{importResult.details.slice(0,3).map((d,i) => <div key={i}>{d.row}: {d.reason}</div>)}</div>
+          <div className="mt-3 space-y-3">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-sm">
+              <div className="font-bold text-green-700 mb-1">Import Complete</div>
+              <div className="text-green-600">✅ Imported: {importResult.success}</div>
+              <div className="text-yellow-600">⏭️ Skipped (duplicates): {importResult.skipped}</div>
+              <div className="text-red-600">❌ Failed: {importResult.failed}</div>
+              {importResult.details?.length > 0 && (
+                <div className="mt-2 text-xs text-red-500">{importResult.details.slice(0,3).map((d,i) => <div key={i}>{d.row}: {d.reason}</div>)}</div>
+              )}
+            </div>
+
+            {/* HR credentials table shown only for HR imports */}
+            {importResult.credentials?.length > 0 && (
+              <div className="p-4 bg-[#EFF6FF] border border-[#DBEAFE] rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-bold text-[#1253A4] text-sm">HR Login Credentials</div>
+                  <button
+                    onClick={() => {
+                      const data = importResult.credentials.map(c => ({
+                        Name: c.name, Company: c.company, Email: c.email,
+                        "HR ID": c.hr_login_id, Password: c.plain_password,
+                      }));
+                      dlXlsx(data, "hr_credentials.xlsx");
+                    }}
+                    className="flex items-center gap-1.5 bg-[#1253A4] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#0d47a1] transition-all">
+                    <Download size={12}/> Export Credentials
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-[#DBEAFE]">
+                        {["Name","Company","Email","HR ID","Password"].map(h => (
+                          <th key={h} className="text-left px-3 py-2 text-[#1253A4] font-semibold whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importResult.credentials.map((c, i) => (
+                        <tr key={i} className="border-b border-[#DBEAFE]">
+                          <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{c.name}</td>
+                          <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{c.company}</td>
+                          <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{c.email}</td>
+                          <td className="px-3 py-2 font-mono font-bold text-[#1253A4] whitespace-nowrap">{c.hr_login_id}</td>
+                          <td className="px-3 py-2 font-mono font-bold text-[#EA580C] whitespace-nowrap">{c.plain_password}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-[#1253A4] mt-2 font-medium">⚠️ Save or export these credentials — passwords won't be shown again.</p>
+              </div>
             )}
           </div>
         )}
@@ -758,6 +820,87 @@ function ImportExportTab({ adminId, showToast, onImportDone, candidates, allHR, 
               <div className="text-xs text-slate-400">{count} records</div>
             </button>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Credentials Modal ─────────────────────────────────────────────────────────
+function CredentialsModal({ credentials, onClose }) {
+  const { hr_login_id, password, hr_name, company_name, email } = credentials;
+  const loginUrl = "https://assistlana-website-6fzh.vercel.app/hr/login";
+
+  const copyText = (text) => navigator.clipboard.writeText(text);
+  const copyBoth = () => {
+    const text = `ASSISTLANA HR Credentials\n\nName: ${hr_name}\nCompany: ${company_name}\nEmail: ${email}\n\nHR ID: ${hr_login_id}\nPassword: ${password}\n\nLogin at: ${loginUrl}`;
+    navigator.clipboard.writeText(text);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] w-full max-w-md mx-4">
+        {/* Header */}
+        <div className="bg-green-500 rounded-t-2xl px-6 py-4 text-white">
+          <div className="text-lg font-bold">✅ HR Account Approved!</div>
+          <div className="text-green-100 text-sm mt-0.5">Credentials generated — share with the HR user</div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Info */}
+          <div className="bg-[#F8FAFC] rounded-xl p-3 border border-[#E2E8F0] space-y-1 text-sm">
+            <div><span className="text-slate-400 text-xs">Name</span><div className="font-semibold text-[#1E293B]">{hr_name}</div></div>
+            <div><span className="text-slate-400 text-xs">Company</span><div className="font-semibold text-[#1E293B]">{company_name}</div></div>
+            <div><span className="text-slate-400 text-xs">Email</span><div className="font-semibold text-[#1E293B]">{email}</div></div>
+          </div>
+
+          {/* HR ID */}
+          <div>
+            <div className="text-xs font-bold text-slate-600 mb-1.5">HR ID</div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-[#EFF6FF] border border-[#DBEAFE] rounded-xl px-4 py-2.5 font-mono font-bold text-[#1253A4] text-sm tracking-widest">
+                {hr_login_id}
+              </div>
+              <button onClick={() => copyText(hr_login_id)}
+                className="px-3 py-2.5 bg-[#1253A4] text-white text-xs font-semibold rounded-xl hover:bg-[#0d47a1] transition-all whitespace-nowrap">
+                Copy
+              </button>
+            </div>
+          </div>
+
+          {/* Password */}
+          <div>
+            <div className="text-xs font-bold text-slate-600 mb-1.5">Password</div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-[#FFF7ED] border border-[#FED7AA] rounded-xl px-4 py-2.5 font-mono font-bold text-[#EA580C] text-sm tracking-widest">
+                {password}
+              </div>
+              <button onClick={() => copyText(password)}
+                className="px-3 py-2.5 bg-[#EA580C] text-white text-xs font-semibold rounded-xl hover:bg-[#c2410c] transition-all whitespace-nowrap">
+                Copy
+              </button>
+            </div>
+          </div>
+
+          {/* Copy Both */}
+          <button onClick={copyBoth}
+            className="w-full bg-green-500 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-green-600 transition-all">
+            Copy Both (with login URL)
+          </button>
+
+          {/* Warning */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 flex items-start gap-2">
+            <AlertTriangle size={14} className="text-yellow-600 flex-shrink-0 mt-0.5"/>
+            <div className="text-xs text-yellow-800 font-medium">
+              Password shown only once — save it now. Login URL: <span className="font-mono text-yellow-900">{loginUrl}</span>
+            </div>
+          </div>
+
+          {/* Close */}
+          <button onClick={onClose}
+            className="w-full border border-[#E2E8F0] text-slate-600 font-semibold py-2.5 rounded-xl text-sm hover:bg-[#F8FAFC] transition-all">
+            Done
+          </button>
         </div>
       </div>
     </div>

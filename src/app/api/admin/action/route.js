@@ -26,9 +26,44 @@ export async function POST(request) {
 
       // ── HR actions ────────────────────────────────────────────
       case "approve_hr": {
-        const { error } = await sb.from("hr_registry").update({ status: "approved" }).eq("id", id);
+        const { data: hr, error: fetchErr } = await sb
+          .from("hr_registry").select("*").eq("id", id).single();
+        if (fetchErr || !hr) throw new Error("HR record not found");
+
+        // Generate unique ASLHR#### login ID
+        const idChars = "0123456789";
+        let hr_login_id;
+        for (let attempt = 0; attempt < 20; attempt++) {
+          const num = Array.from({ length: 4 }, () => idChars[Math.floor(Math.random() * 10)]).join("");
+          hr_login_id = "ASLHR" + num;
+          const { data: clash } = await sb
+            .from("hr_registry").select("id").eq("hr_login_id", hr_login_id).maybeSingle();
+          if (!clash) break;
+        }
+
+        // Generate 8-char plain-text password (same method as rest of project: no hashing)
+        const pwChars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+        const plainPassword = Array.from({ length: 8 }, () =>
+          pwChars[Math.floor(Math.random() * pwChars.length)]
+        ).join("");
+
+        const { error } = await sb.from("hr_registry").update({
+          status:      "approved",
+          hr_login_id,
+          password:    plainPassword,
+        }).eq("id", id);
         if (error) throw error;
-        result = { message: "HR approved" };
+
+        result = {
+          message:     "HR approved",
+          credentials: {
+            hr_login_id,
+            password:     plainPassword,
+            hr_name:      hr.name,
+            company_name: hr.company || "ASSISTLANA",
+            email:        hr.email,
+          },
+        };
         break;
       }
 
