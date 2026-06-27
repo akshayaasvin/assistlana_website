@@ -20,35 +20,27 @@ export default function AdminLogin() {
 
     setLoading(true);
 
-    // Query candidates table — admin is the row with id === ADMIN_UID
-    const { data, error: dbErr } = await supabase
-      .from("candidates")
-      .select("id, name, email, password")
-      .eq("email", email.trim().toLowerCase())
-      .single();
+    const { data, error: authErr } = await supabase.auth.signInWithPassword({
+      email:    email.trim().toLowerCase(),
+      password,
+    });
 
-    if (dbErr || !data) {
-      setError("No account found with this email.");
+    if (authErr || !data.user) {
+      setError("Invalid email or password.");
       setLoading(false);
       return;
     }
 
-    if (data.id !== ADMIN_UID) {
-      setError("This account does not have admin privileges.");
-      setLoading(false);
-      return;
-    }
-
-    if (data.password !== password) {
-      setError("Incorrect password.");
+    if (data.user.id !== ADMIN_UID) {
+      await supabase.auth.signOut();
+      setError("You are not authorized to access the admin panel.");
       setLoading(false);
       return;
     }
 
     localStorage.setItem("adminAuth", JSON.stringify({
-      id:        ADMIN_UID,
-      email:     data.email,
-      name:      data.name,
+      id:        data.user.id,
+      email:     data.user.email,
       role:      "admin",
       loginTime: Date.now(),
     }));

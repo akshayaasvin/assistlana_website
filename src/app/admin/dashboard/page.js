@@ -140,7 +140,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await sb.auth.signOut(); } catch (_) {}
     localStorage.removeItem("adminAuth");
     router.push("/admin/login");
   };
