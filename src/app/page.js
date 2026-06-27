@@ -135,14 +135,22 @@ export default function HomePage() {
     setLoading(true);
     await new Promise(r => setTimeout(r, 600));
     if (portalChoice === "hr") {
+      // hr_registry has no password column — authentication is by email existence
+      // Status check (pending/approved/rejected) happens in the HR portal itself
       const { data: hrUser, error: hrErr } = await supabase
         .from("hr_registry")
-        .select("*")
-        .eq("email", email)
+        .select("id, name, email, company, status")
+        .eq("email", email.trim().toLowerCase())
         .single();
-      if (hrErr || !hrUser) { setError("Invalid HR email or password."); setLoading(false); return; }
-      if (hrUser.password !== password) { setError("Invalid HR email or password."); setLoading(false); return; }
-      localStorage.setItem("hr_user", JSON.stringify({ name: hrUser.name, email: hrUser.email, role: hrUser.role || "HR Manager" }));
+      if (hrErr || !hrUser) {
+        setError("No HR account found with this email. Contact admin@assistlana.com to register.");
+        setLoading(false);
+        return;
+      }
+      localStorage.setItem("hr_user", JSON.stringify({
+        name: hrUser.name, email: hrUser.email,
+        company: hrUser.company, role: "HR Manager", status: hrUser.status,
+      }));
       setShowSignIn(false); resetModal(); router.push("/hr/upload");
     } else {
       const { data, error: dbErr } = await supabase.from("candidates").select("*").eq("email", email).single();
@@ -177,9 +185,20 @@ export default function HomePage() {
         }
         setLoading(false); setShowSignUp(false); resetModal(); router.push("/candidate/dashboard");
       } else {
+        // HR signup: insert into hr_registry with pending status
+        const { error: hrErr } = await supabase.from("hr_registry").insert([{
+          name:    signupData.name.trim(),
+          email:   signupData.email.trim().toLowerCase(),
+          company: "ASSISTLANA",
+          status:  "pending",
+        }]);
         setLoading(false); setShowSignUp(false);
-        setSuccessMsg("HR account request sent! Admin will review and approve.");
-        setTimeout(() => setSuccessMsg(""), 5000);
+        if (hrErr && hrErr.code !== "23505") {
+          setSuccessMsg("Request sent! Admin will review your account.");
+        } else {
+          setSuccessMsg("HR account request sent! Admin will review and approve within 24 hours.");
+        }
+        setTimeout(() => setSuccessMsg(""), 6000);
       }
     } catch (err) { setError("Something went wrong: " + err.message); setLoading(false); }
   };

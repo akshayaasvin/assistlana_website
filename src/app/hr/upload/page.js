@@ -80,10 +80,18 @@ export default function HRUpload() {
   const [backendMode,   setBackendMode]   = useState(false);
   const [recentFromDB,  setRecentFromDB]  = useState([]);
 
+  const [hrStatus, setHrStatus] = useState(null); // null=checking, string=status
+
   useEffect(() => {
     const stored = localStorage.getItem("hr_user");
     if (!stored) { router.push("/"); return; }
-    setUser(JSON.parse(stored));
+    const u = JSON.parse(stored);
+    setUser(u);
+
+    // Always re-verify status from DB (localStorage can be stale)
+    supabase.from("hr_registry").select("status").eq("email", u.email).single()
+      .then(({ data }) => setHrStatus(data?.status || "pending"))
+      .catch(() => setHrStatus("pending"));
 
     // Check if backend is running
     fetch("https://assistlana-backend.onrender.com/api/health")
@@ -255,7 +263,42 @@ export default function HRUpload() {
       .then(({ data }) => setRecentFromDB(data || []));
   };
 
-  if (!user) return null;
+  if (!user || hrStatus === null) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+      <div className="w-8 h-8 border-4 border-[#0EA5C9]/20 border-t-[#0EA5C9] rounded-full animate-spin"/>
+    </div>
+  );
+
+  // HR account pending approval
+  if (hrStatus === "pending") return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-10 max-w-md w-full text-center">
+        <div className="text-5xl mb-4">⏳</div>
+        <h2 className="text-xl font-bold text-[#1E293B] mb-2">Account Pending Approval</h2>
+        <p className="text-slate-500 text-sm mb-2">Your account is pending admin approval.</p>
+        <p className="text-slate-400 text-xs mb-6">Contact <a href="mailto:admin@assistlana.com" className="text-[#0EA5C9] underline">admin@assistlana.com</a> for help.</p>
+        <button onClick={() => { localStorage.removeItem("hr_user"); router.push("/"); }}
+          className="px-6 py-2.5 bg-[#F1F5F9] text-slate-600 rounded-xl text-sm font-semibold hover:bg-[#E2E8F0] transition-all">
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+
+  // HR account rejected
+  if (hrStatus === "rejected") return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4">
+      <div className="bg-white rounded-2xl border border-red-200 shadow-sm p-10 max-w-md w-full text-center">
+        <div className="text-5xl mb-4">❌</div>
+        <h2 className="text-xl font-bold text-[#1E293B] mb-2">Account Not Approved</h2>
+        <p className="text-slate-500 text-sm mb-6">Your account was not approved. Contact <a href="mailto:admin@assistlana.com" className="text-[#0EA5C9] underline">admin@assistlana.com</a> for assistance.</p>
+        <button onClick={() => { localStorage.removeItem("hr_user"); router.push("/"); }}
+          className="px-6 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 transition-all">
+          Logout
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex bg-[#F8FAFC]">
