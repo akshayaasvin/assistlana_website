@@ -8,48 +8,14 @@ import { Upload, FileText, CheckCircle, AlertCircle, ChevronDown, ChevronUp } fr
 const MAX_FILE_SIZE_MB = 5;
 const ACCEPTED_TYPES = [".pdf", ".docx", ".doc"];
 
-// Extract readable text from uploaded file
+// Extract text via server-side API (uses pdf-parse for PDF, mammoth for DOCX)
 async function extractTextFromFile(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-
-    if (file.name.toLowerCase().endsWith(".docx") || file.name.toLowerCase().endsWith(".doc")) {
-      // DOCX files are ZIP archives of XML — read as binary, strip XML tags
-      reader.onload = (e) => {
-        const binary = e.target?.result || "";
-        // Extract readable text between XML tags (works for .docx word/document.xml content)
-        const textContent = binary
-          .toString()
-          .replace(/<[^>]+>/g, " ")   // strip XML tags
-          .replace(/[^\x20-\x7E\n\r\t]/g, " ") // remove non-printable chars
-          .replace(/\s{3,}/g, "\n")   // collapse excessive whitespace
-          .trim()
-          .slice(0, 5000);
-        resolve(textContent.length > 50 ? textContent : `Document: ${file.name}. Could not extract readable text.`);
-      };
-      reader.readAsBinaryString(file);
-    } else if (file.name.toLowerCase().endsWith(".pdf")) {
-      // For PDFs, read as text (works for text-based PDFs; image PDFs will return limited content)
-      reader.onload = (e) => {
-        const raw = e.target?.result || "";
-        // Strip PDF binary header/footer, keep only printable ASCII
-        const cleaned = raw
-          .toString()
-          .replace(/[^\x20-\x7E\n\r\t]/g, " ")
-          .replace(/\s{3,}/g, "\n")
-          .trim()
-          .slice(0, 5000);
-        resolve(cleaned.length > 100 ? cleaned : `PDF resume: ${file.name}. Limited text could be extracted — ensure the PDF is text-based, not scanned.`);
-      };
-      reader.readAsBinaryString(file);
-    } else {
-      reader.onload = (e) => {
-        const text = e.target?.result;
-        resolve(typeof text === "string" ? text.slice(0, 5000) : `File: ${file.name}`);
-      };
-      reader.readAsText(file);
-    }
-  });
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/api/extract-resume-text", { method: "POST", body: formData });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.text;
 }
 
 async function analyzeResume(text) {
