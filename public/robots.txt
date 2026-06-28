@@ -1,0 +1,43 @@
+User-agent: *
+Allow: /
+Allow: /jobs
+Allow: /internships
+Allow: /about
+Allow: /contact
+Allow: /hr/signup
+Allow: /candidate/signup
+
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin/dashboard
+Disallow: /admin/login
+Disallow: /hr/upload
+Disallow: /hr/candidates
+Disallow: /hr/dashboard
+Disallow: /candidate/dashboard
+Disallow: /candidate/resume
+Disallow: /candidate/mock-interview
+Disallow: /api/
+Disallow: /_next/
+
+Sitemap: https://assistlana-website-6fzh.vercel.app/sitemap.xml
+
+User-agent: GPTBot
+Allow: /
+Allow: /jobs
+Allow: /internships
+Allow: /about
+
+User-agent: Google-Extended
+Allow: /
+Allow: /jobs
+Allow: /internships
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Claude-Web
+Allow: /

@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import PublicHeader from "@/components/shared/PublicHeader";
 import GlobalFooter from "@/components/shared/GlobalFooter";
+import { FAQSchema, SoftwareApplicationSchema, FAQ_ITEMS } from "@/components/StructuredData";
 
 /* ─── PWA Install ───────────────────────────────────── */
 function InstallButton() {
@@ -550,6 +551,28 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ══ FAQ ═══════════════════════════════════════ */}
+      <section className="bg-[#F8FAFC] py-20 px-4 md:px-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-[#2563EB] px-4 py-1.5 rounded-full text-xs font-bold mb-4">
+              <Zap size={11}/> FAQ
+            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-[#0F172A] mb-3">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-[#64748B] max-w-xl mx-auto">
+              Everything you need to know about ASSISTLANA.
+            </p>
+          </div>
+          <div className="space-y-4">
+            {FAQ_ITEMS.map((item, i) => (
+              <FAQItem key={i} q={item.q} a={item.a} />
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ══ FINAL CTA ═════════════════════════════════ */}
       <section className="bg-gradient-to-br from-[#2563EB] via-[#1D4ED8] to-[#0891B2] py-24 px-4 md:px-8 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
@@ -578,6 +601,8 @@ export default function HomePage() {
       </section>
 
       <GlobalFooter/>
+      <FAQSchema />
+      <SoftwareApplicationSchema />
 
       {/* ══ SIGN IN MODAL ══════════════════════════════ */}
       {showSignIn && (
@@ -693,6 +718,26 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FAQItem({ q, a }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-6 py-4 text-left gap-4"
+      >
+        <span className="font-semibold text-[#0F172A] text-sm">{q}</span>
+        <span className={`text-[#2563EB] text-lg font-bold flex-shrink-0 transition-transform ${open ? "rotate-45" : ""}`}>+</span>
+      </button>
+      {open && (
+        <div className="px-6 pb-5 text-sm text-[#64748B] leading-relaxed border-t border-[#F1F5F9] pt-4">
+          {a}
         </div>
       )}
     </div>

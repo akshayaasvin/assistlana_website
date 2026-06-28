@@ -1,0 +1,28 @@
+# ASSISTLANA - AI-Powered HR Platform
+
+## About
+ASSISTLANA is an AI-powered HR and recruitment platform serving India.
+We help job seekers find jobs and internships, and help HR teams hire faster using AI.
+
+## Key Features
+- AI Resume Screening: Upload resume, get instant ATS score and improvement tips
+- AI Mock Interview: Practice interviews with AI avatar in English or Tamil
+- Job Portal: Browse and apply for jobs across India
+- Internship Portal: Find internships for freshers
+- HR Tools: Post jobs, screen resumes, manage candidates
+
+## Target Users
+- Job Seekers and Freshers looking for jobs in India
+- HR professionals and companies hiring in India
+- Students looking for internships
+
+## Pages
+- Homepage: https://assistlana-website-6fzh.vercel.app
+- Jobs: https://assistlana-website-6fzh.vercel.app/jobs
+- Internships: https://assistlana-website-6fzh.vercel.app/internships
+- HR Signup: https://assistlana-website-6fzh.vercel.app/hr/signup
+- About: https://assistlana-website-6fzh.vercel.app/about
+
+## Contact
+Email: admin@assistlana.com
+Location: Pondicherry, Tamil Nadu, India
