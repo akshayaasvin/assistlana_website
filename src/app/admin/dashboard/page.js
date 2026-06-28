@@ -831,11 +831,27 @@ function ImportExportTab({ adminId, showToast, onImportDone, candidates, allHR, 
 function CredentialsModal({ credentials, onClose }) {
   const { hr_login_id, password, hr_name, company_name, email } = credentials;
   const loginUrl = "https://assistlana-website-6fzh.vercel.app/hr/login";
+  const [copied, setCopied] = useState("");
 
-  const copyText = (text) => navigator.clipboard.writeText(text);
+  const copyText = async (text, key) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = text;
+      el.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+      document.body.appendChild(el);
+      el.focus(); el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
+    setCopied(key);
+    setTimeout(() => setCopied(""), 2000);
+  };
+
   const copyBoth = () => {
-    const text = `ASSISTLANA HR Credentials\n\nName: ${hr_name}\nCompany: ${company_name}\nEmail: ${email}\n\nHR ID: ${hr_login_id}\nPassword: ${password}\n\nLogin at: ${loginUrl}`;
-    navigator.clipboard.writeText(text);
+    const text = `ASSISTLANA HR Login Credentials\n━━━━━━━━━━━━━━━━━━━━\nHR ID: ${hr_login_id}\nPassword: ${password}\n━━━━━━━━━━━━━━━━━━━━\nLogin URL: ${loginUrl}`;
+    copyText(text, "both");
   };
 
   return (
@@ -859,12 +875,15 @@ function CredentialsModal({ credentials, onClose }) {
           <div>
             <div className="text-xs font-bold text-slate-600 mb-1.5">HR ID</div>
             <div className="flex items-center gap-2">
-              <div className="flex-1 bg-[#EFF6FF] border border-[#DBEAFE] rounded-xl px-4 py-2.5 font-mono font-bold text-[#1253A4] text-sm tracking-widest">
-                {hr_login_id}
-              </div>
-              <button onClick={() => copyText(hr_login_id)}
-                className="px-3 py-2.5 bg-[#1253A4] text-white text-xs font-semibold rounded-xl hover:bg-[#0d47a1] transition-all whitespace-nowrap">
-                Copy
+              <input
+                readOnly
+                value={hr_login_id}
+                onFocus={e => e.target.select()}
+                className="flex-1 bg-[#EFF6FF] border border-[#DBEAFE] rounded-xl px-4 py-2.5 font-mono font-bold text-[#1253A4] text-sm tracking-widest outline-none focus:border-[#1253A4] cursor-text select-all"
+              />
+              <button onClick={() => copyText(hr_login_id, "id")}
+                className={`px-3 py-2.5 text-white text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${copied === "id" ? "bg-green-500" : "bg-[#1253A4] hover:bg-[#0d47a1]"}`}>
+                {copied === "id" ? "✓ Copied" : "Copy"}
               </button>
             </div>
           </div>
@@ -873,20 +892,23 @@ function CredentialsModal({ credentials, onClose }) {
           <div>
             <div className="text-xs font-bold text-slate-600 mb-1.5">Password</div>
             <div className="flex items-center gap-2">
-              <div className="flex-1 bg-[#FFF7ED] border border-[#FED7AA] rounded-xl px-4 py-2.5 font-mono font-bold text-[#EA580C] text-sm tracking-widest">
-                {password}
-              </div>
-              <button onClick={() => copyText(password)}
-                className="px-3 py-2.5 bg-[#EA580C] text-white text-xs font-semibold rounded-xl hover:bg-[#c2410c] transition-all whitespace-nowrap">
-                Copy
+              <input
+                readOnly
+                value={password}
+                onFocus={e => e.target.select()}
+                className="flex-1 bg-[#FFF7ED] border border-[#FED7AA] rounded-xl px-4 py-2.5 font-mono font-bold text-[#EA580C] text-sm tracking-widest outline-none focus:border-[#EA580C] cursor-text"
+              />
+              <button onClick={() => copyText(password, "pw")}
+                className={`px-3 py-2.5 text-white text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${copied === "pw" ? "bg-green-500" : "bg-[#EA580C] hover:bg-[#c2410c]"}`}>
+                {copied === "pw" ? "✓ Copied" : "Copy"}
               </button>
             </div>
           </div>
 
           {/* Copy Both */}
           <button onClick={copyBoth}
-            className="w-full bg-green-500 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-green-600 transition-all">
-            Copy Both (with login URL)
+            className={`w-full font-semibold py-2.5 rounded-xl text-sm transition-all ${copied === "both" ? "bg-green-600 text-white" : "bg-green-500 text-white hover:bg-green-600"}`}>
+            {copied === "both" ? "✓ Copied!" : "Copy Both (with login URL)"}
           </button>
 
           {/* Warning */}

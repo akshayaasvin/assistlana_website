@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcryptjs";
 
 const ADMIN_UID = "dd0b11eb-76c6-4afd-94b4-0d0845c85b5c";
 
@@ -41,16 +42,19 @@ export async function POST(request) {
           if (!clash) break;
         }
 
-        // Generate 8-char plain-text password (same method as rest of project: no hashing)
+        // Generate 8-char plain-text password
         const pwChars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
         const plainPassword = Array.from({ length: 8 }, () =>
           pwChars[Math.floor(Math.random() * pwChars.length)]
         ).join("");
 
+        // Hash before storing — plain password is returned in response for admin to share
+        const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
         const { error } = await sb.from("hr_registry").update({
           status:      "approved",
           hr_login_id,
-          password:    plainPassword,
+          password:    hashedPassword,
         }).eq("id", id);
         if (error) throw error;
 

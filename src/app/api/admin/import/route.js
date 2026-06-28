@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcryptjs";
 
 const ADMIN_UID = "dd0b11eb-76c6-4afd-94b4-0d0845c85b5c";
 const BATCH = 50;
@@ -83,8 +84,9 @@ export async function POST(request) {
       for (const row of rows) {
         if (!row.email || !row.name) { failed.push({ row: row.email || "?", reason: "Missing name or email" }); continue; }
         if (existingSet.has(row.email)) { skipped++; continue; }
-        const hr_login_id   = genHrId();
+        const hr_login_id    = genHrId();
         const plain_password = genPassword();
+        const hashed_password = await bcrypt.hash(plain_password, 10);
         toInsert.push({
           name:         String(row.name || "").trim(),
           email:        String(row.email || "").trim().toLowerCase(),
@@ -92,7 +94,7 @@ export async function POST(request) {
           company:      String(row.company || "ASSISTLANA"),
           status:       "approved",
           hr_login_id,
-          password:     plain_password,
+          password:     hashed_password,
         });
         credentials.push({
           name:         String(row.name || "").trim(),
