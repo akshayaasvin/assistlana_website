@@ -666,43 +666,28 @@ export default function HomePage() {
               <button onClick={()=>{setShowSignUp(false);resetModal();}} className="text-white/70 hover:text-white"><X size={20}/></button>
             </div>
             <div className="p-7">
-              {error && <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-4 text-sm"><AlertCircle size={14}/>{error}</div>}
-              <div className="mb-4">
-                <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Full Name</label>
-                <input type="text" placeholder="e.g. Priya Rajan" value={signupData.name}
-                  onChange={e=>setSignupData(p=>({...p,name:e.target.value}))}
-                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none transition-colors"/>
+              <div className="text-sm font-semibold text-[#64748B] mb-5 text-center">I want to register as...</div>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => { setShowSignUp(false); resetModal(); router.push("/candidate/signup"); }}
+                  className="flex flex-col items-center gap-3 p-6 border-2 border-[#E2E8F0] rounded-2xl hover:border-[#06B6D4] hover:bg-cyan-50 transition-all">
+                  <UserCircle size={32} className="text-[#06B6D4]"/>
+                  <div>
+                    <div className="font-bold text-[#0F172A] text-sm">Job Seeker</div>
+                    <div className="text-[11px] text-[#64748B] mt-0.5">Find opportunities</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setShowSignUp(false); resetModal(); router.push("/hr/signup"); }}
+                  className="flex flex-col items-center gap-3 p-6 border-2 border-[#E2E8F0] rounded-2xl hover:border-[#2563EB] hover:bg-blue-50 transition-all">
+                  <Users size={32} className="text-[#2563EB]"/>
+                  <div>
+                    <div className="font-bold text-[#0F172A] text-sm">HR Recruiter</div>
+                    <div className="text-[11px] text-[#64748B] mt-0.5">Find talent</div>
+                  </div>
+                </button>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Email Address</label>
-                <input type="email" placeholder="Enter your email" value={signupData.email}
-                  onChange={e=>setSignupData(p=>({...p,email:e.target.value}))}
-                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none transition-colors"/>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Password</label>
-                <input type="password" placeholder="Minimum 6 characters" value={signupData.password}
-                  onChange={e=>setSignupData(p=>({...p,password:e.target.value}))}
-                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none transition-colors"/>
-              </div>
-              <div className="mb-5">
-                <label className="block text-sm font-semibold text-[#64748B] mb-1.5">I am a...</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[["candidate","👤 Candidate"],["hr","👥 HR Recruiter"]].map(([role,label])=>(
-                    <button key={role} onClick={()=>setSignupData(p=>({...p,role}))}
-                      className={`py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${
-                        signupData.role===role
-                          ? role==="hr" ? "border-[#2563EB] bg-blue-50 text-[#2563EB]" : "border-[#06B6D4] bg-cyan-50 text-[#0891B2]"
-                          : "border-[#E2E8F0] text-[#64748B]"
-                      }`}>{label}</button>
-                  ))}
-                </div>
-              </div>
-              <button onClick={handleSignUp} disabled={loading}
-                className="w-full bg-gradient-to-r from-[#2563EB] to-[#06B6D4] text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-60 hover:opacity-90 transition-all">
-                {loading?"Creating account...":"Create Account →"}
-              </button>
-              <div className="mt-4 text-center text-sm text-[#64748B]">
+              <div className="mt-5 text-center text-sm text-[#64748B]">
                 Already have an account?{" "}
                 <button onClick={()=>{setShowSignUp(false);openSignIn();}} className="text-[#2563EB] font-semibold hover:underline">Sign In</button>
               </div>

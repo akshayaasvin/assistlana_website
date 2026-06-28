@@ -10,7 +10,7 @@ const withPWAConfig = withPWA({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {},
-  serverExternalPackages: ["pdf-parse", "mammoth"],
+  serverExternalPackages: ["pdfjs-dist", "mammoth"],
 };
 
 export default withPWAConfig(nextConfig);

@@ -20,6 +20,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    const { plan } = body; // used by update_hr_plan
     const sb = adminClient();
     let result = {};
 
@@ -42,32 +43,42 @@ export async function POST(request) {
           if (!clash) break;
         }
 
-        // Generate 8-char plain-text password
-        const pwChars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-        const plainPassword = Array.from({ length: 8 }, () =>
-          pwChars[Math.floor(Math.random() * pwChars.length)]
-        ).join("");
+        // If HR already set their own password during registration, keep it.
+        // Only generate a new password if no password is stored yet.
+        let plainPassword = null;
+        const updateData = { status: "approved", hr_login_id };
 
-        // Hash before storing — plain password is returned in response for admin to share
-        const hashedPassword = await bcrypt.hash(plainPassword, 10);
+        if (!hr.password) {
+          const pwChars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+          plainPassword = Array.from({ length: 8 }, () =>
+            pwChars[Math.floor(Math.random() * pwChars.length)]
+          ).join("");
+          updateData.password = await bcrypt.hash(plainPassword, 10);
+        }
 
-        const { error } = await sb.from("hr_registry").update({
-          status:      "approved",
-          hr_login_id,
-          password:    hashedPassword,
-        }).eq("id", id);
+        const { error } = await sb.from("hr_registry").update(updateData).eq("id", id);
         if (error) throw error;
 
         result = {
           message:     "HR approved",
           credentials: {
             hr_login_id,
-            password:     plainPassword,
-            hr_name:      hr.name,
-            company_name: hr.company || "ASSISTLANA",
-            email:        hr.email,
+            // null if HR self-set their password (admin doesn't need to share it)
+            password:          plainPassword,
+            self_set_password: !!hr.password,
+            hr_name:           hr.name,
+            company_name:      hr.company || "ASSISTLANA",
+            email:             hr.email,
           },
         };
+        break;
+      }
+
+      case "update_hr_plan": {
+        if (!["free","premium"].includes(plan)) throw new Error("Invalid plan value");
+        const { error } = await sb.from("hr_registry").update({ plan }).eq("id", id);
+        if (error) throw error;
+        result = { message: `HR plan updated to ${plan}` };
         break;
       }
 

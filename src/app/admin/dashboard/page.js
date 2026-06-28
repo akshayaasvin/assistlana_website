@@ -35,11 +35,11 @@ function Badge({ status }) {
   );
 }
 
-async function adminAction(action, id, adminId) {
+async function adminAction(action, id, adminId, extra = {}) {
   const res = await fetch("/api/admin/action", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, id, adminId }),
+    body: JSON.stringify({ action, id, adminId, ...extra }),
   });
   return res.json();
 }
@@ -126,8 +126,8 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
-  const hrAction = async (action, id) => {
-    const r = await adminAction(action, id, ADMIN_UID);
+  const hrAction = async (action, id, extra = {}) => {
+    const r = await adminAction(action, id, ADMIN_UID, extra);
     if (r.success) {
       if (action === "approve_hr" && r.credentials) {
         setCredentialsModal(r.credentials);
@@ -329,7 +329,7 @@ function HRTable({ data, title, onAction, loading }) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#F1F5F9] bg-[#F8FAFC]">
-                  {["Name","Email","Phone","Company","Status","Registered","Actions"].map(h => (
+                  {["Name","Email","Company","Status","Plan","Registered","Actions"].map(h => (
                     <th key={h} className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-4 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -337,14 +337,25 @@ function HRTable({ data, title, onAction, loading }) {
               <tbody>
                 {data.map((hr, i) => (
                   <tr key={hr.id || i} className="border-b border-[#F8FAFC] hover:bg-[#F8FAFC] transition-all">
-                    <td className="py-3 px-4 text-sm font-semibold text-[#1E293B]">{hr.name}</td>
+                    <td className="py-3 px-4">
+                      <div className="text-sm font-semibold text-[#1E293B]">{hr.name}</div>
+                      <div className="text-xs text-slate-400">{hr.hr_login_id || "—"}</div>
+                    </td>
                     <td className="py-3 px-4 text-sm text-slate-500">{hr.email}</td>
-                    <td className="py-3 px-4 text-sm text-slate-500">{hr.phone || "—"}</td>
                     <td className="py-3 px-4 text-sm text-slate-500">{hr.company || "—"}</td>
                     <td className="py-3 px-4"><Badge status={hr.status}/></td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        hr.plan === "premium"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {hr.plan === "premium" ? "⭐ Premium" : "Free"}
+                      </span>
+                    </td>
                     <td className="py-3 px-4 text-xs text-slate-400">{hr.registered_at ? new Date(hr.registered_at).toLocaleDateString() : "—"}</td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-wrap">
                         {hr.status !== "approved" && (
                           <button onClick={() => onAction("approve_hr", hr.id)}
                             className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-200 transition-all">
@@ -357,7 +368,20 @@ function HRTable({ data, title, onAction, loading }) {
                             Reject
                           </button>
                         )}
-                        <button onClick={() => confirm(`Delete HR account: ${hr.name}?`) && onAction("delete_hr", hr.id)}
+                        {hr.status === "approved" && (
+                          hr.plan === "premium" ? (
+                            <button onClick={() => onAction("update_hr_plan", hr.id, { plan: "free" })}
+                              className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200 transition-all whitespace-nowrap">
+                              → Free
+                            </button>
+                          ) : (
+                            <button onClick={() => onAction("update_hr_plan", hr.id, { plan: "premium" })}
+                              className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-xs font-semibold hover:bg-yellow-200 transition-all whitespace-nowrap">
+                              ⭐ Premium
+                            </button>
+                          )
+                        )}
+                        <button onClick={() => window.confirm(`Delete HR account: ${hr.name}?`) && onAction("delete_hr", hr.id)}
                           className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
                           <Trash2 size={13}/>
                         </button>
@@ -829,7 +853,7 @@ function ImportExportTab({ adminId, showToast, onImportDone, candidates, allHR, 
 
 // ─── Credentials Modal ─────────────────────────────────────────────────────────
 function CredentialsModal({ credentials, onClose }) {
-  const { hr_login_id, password, hr_name, company_name, email } = credentials;
+  const { hr_login_id, password, hr_name, company_name, email, self_set_password } = credentials;
   const loginUrl = "https://assistlana-website-6fzh.vercel.app/hr/login";
   const [copied, setCopied] = useState("");
 
@@ -889,21 +913,27 @@ function CredentialsModal({ credentials, onClose }) {
           </div>
 
           {/* Password */}
-          <div>
-            <div className="text-xs font-bold text-slate-600 mb-1.5">Password</div>
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={password}
-                onFocus={e => e.target.select()}
-                className="flex-1 bg-[#FFF7ED] border border-[#FED7AA] rounded-xl px-4 py-2.5 font-mono font-bold text-[#EA580C] text-sm tracking-widest outline-none focus:border-[#EA580C] cursor-text"
-              />
-              <button onClick={() => copyText(password, "pw")}
-                className={`px-3 py-2.5 text-white text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${copied === "pw" ? "bg-green-500" : "bg-[#EA580C] hover:bg-[#c2410c]"}`}>
-                {copied === "pw" ? "✓ Copied" : "Copy"}
-              </button>
+          {self_set_password ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800 font-medium">
+              ℹ️ This HR user set their own password during registration. Only share the <strong>HR ID</strong> above — they already know their password.
             </div>
-          </div>
+          ) : (
+            <div>
+              <div className="text-xs font-bold text-slate-600 mb-1.5">Password</div>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={password || ""}
+                  onFocus={e => e.target.select()}
+                  className="flex-1 bg-[#FFF7ED] border border-[#FED7AA] rounded-xl px-4 py-2.5 font-mono font-bold text-[#EA580C] text-sm tracking-widest outline-none focus:border-[#EA580C] cursor-text"
+                />
+                <button onClick={() => copyText(password, "pw")}
+                  className={`px-3 py-2.5 text-white text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${copied === "pw" ? "bg-green-500" : "bg-[#EA580C] hover:bg-[#c2410c]"}`}>
+                  {copied === "pw" ? "✓ Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Copy Both */}
           <button onClick={copyBoth}
