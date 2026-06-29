@@ -10,7 +10,18 @@ const withPWAConfig = withPWA({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {},
-  serverExternalPackages: ["pdfjs-dist", "mammoth"],
+  serverExternalPackages: ["pdfjs-dist", "mammoth", "canvas"],
+
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = config.externals || [];
+      if (Array.isArray(config.externals)) {
+        config.externals.push("pdfjs-dist");
+        config.externals.push("canvas");
+      }
+    }
+    return config;
+  },
 
   images: {
     formats: ["image/avif", "image/webp"],

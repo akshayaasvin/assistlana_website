@@ -129,16 +129,30 @@ export default function HRUpload() {
 
     for (const file of files) {
       try {
-        // Step 1: Extract text from file
+        // Step 1: Try text extraction from file
         setFileStatus(file.name, "extracting");
-        const formData = new FormData();
-        formData.append("file", file);
-        const textRes  = await fetch("/api/extract-resume-text", { method: "POST", body: formData });
-        const textData = await textRes.json();
+        let detailsPayload = null;
 
-        if (!textData.text) {
-          setFileStatus(file.name, "error", { error: textData.error || "Text extraction failed" });
-          continue;
+        try {
+          const fd      = new FormData();
+          fd.append("file", file);
+          const textRes  = await fetch("/api/extract-resume-text", { method: "POST", body: fd });
+          const textData = await textRes.json();
+          if (textData.text) {
+            detailsPayload = { resumeText: textData.text };
+          }
+        } catch (_) {}
+
+        // Fallback: send file as base64 directly to Gemini (works for image-based PDFs too)
+        if (!detailsPayload) {
+          const ab    = await file.arrayBuffer();
+          const bytes = new Uint8Array(ab);
+          let binary  = "";
+          bytes.forEach(b => { binary += String.fromCharCode(b); });
+          detailsPayload = {
+            fileBase64: btoa(binary),
+            mimeType:   file.type || "application/pdf",
+          };
         }
 
         // Step 2: Gemini extracts structured details
@@ -146,7 +160,7 @@ export default function HRUpload() {
         const detailsRes = await fetch("/api/extract-resume-details", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resumeText: textData.text }),
+          body: JSON.stringify(detailsPayload),
         });
         const extracted = await detailsRes.json();
 
