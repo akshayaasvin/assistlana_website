@@ -9,7 +9,7 @@ import {
   Search, Bell, Eye, EyeOff, X, Download, Filter, ChevronDown, Trash2, Star,
 } from "lucide-react";
 
-// ── Phone masking ──
+// ── Phone masking ──────────────────────────────────────────────────────────────
 const maskPhone = (phone) => {
   if (!phone) return "N/A";
   const s = String(phone).replace(/\D/g, "");
@@ -17,7 +17,7 @@ const maskPhone = (phone) => {
   return s.slice(0, 2) + "••••••" + s.slice(-2);
 };
 
-// ── Excel download (premium — includes phone) ──
+// ── Excel download (premium — includes phone) ──────────────────────────────────
 function downloadPremiumExcel(candidates, filename = "JobSeekers_Report") {
   const rows = candidates.map((c, i) => ({
     "S.No":           i + 1,
@@ -26,7 +26,7 @@ function downloadPremiumExcel(candidates, filename = "JobSeekers_Report") {
     "Phone":          c.phone || "",
     "Location":       c.current_location || c.location || "",
     "Domain":         c.domain || "",
-    "Experience":     c.experience_level || "",
+    "Experience":     c.experience_level || (c.experience_years ? c.experience_years + " yrs" : ""),
     "Work Mode":      c.work_mode || "",
     "Skills":         Array.isArray(c.skills) ? c.skills.join(", ") : (c.skills || ""),
     "AI Score":       c.ai_score || 0,
@@ -40,11 +40,11 @@ function downloadPremiumExcel(candidates, filename = "JobSeekers_Report") {
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Job Seekers");
-  const buf = XLSX.write(wb, { bookType:"xlsx", type:"array" });
-  saveAs(new Blob([buf], { type:"application/octet-stream" }), `${filename}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  saveAs(new Blob([buf], { type: "application/octet-stream" }), `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-// ── Excel download (free — no phone) ──
+// ── Excel download (free — no phone) ──────────────────────────────────────────
 function downloadFreeExcel(candidates, filename = "JobSeekers_Report") {
   const rows = candidates.map((c, i) => ({
     "S.No":       i + 1,
@@ -52,7 +52,7 @@ function downloadFreeExcel(candidates, filename = "JobSeekers_Report") {
     "Email":      c.email || "",
     "Location":   c.current_location || c.location || "",
     "Domain":     c.domain || "",
-    "Experience": c.experience_level || "",
+    "Experience": c.experience_level || (c.experience_years ? c.experience_years + " yrs" : ""),
     "Skills":     Array.isArray(c.skills) ? c.skills.join(", ") : (c.skills || ""),
     "AI Score":   c.ai_score || 0,
     "JD Match %": (c.jd_match || 0) + "%",
@@ -65,35 +65,60 @@ function downloadFreeExcel(candidates, filename = "JobSeekers_Report") {
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Job Seekers");
-  const buf = XLSX.write(wb, { bookType:"xlsx", type:"array" });
-  saveAs(new Blob([buf], { type:"application/octet-stream" }), `${filename}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  saveAs(new Blob([buf], { type: "application/octet-stream" }), `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// ── JD score badge ─────────────────────────────────────────────────────────────
+function JDMatchBadge({ score, reason }) {
+  if (score == null) return <span className="text-xs text-slate-400">—</span>;
+  const s   = Number(score);
+  const cfg = s >= 90 ? { bg: "bg-green-100  text-green-700",  label: "Excellent" }
+            : s >= 70 ? { bg: "bg-yellow-100 text-yellow-700", label: "Good"      }
+            : s >= 50 ? { bg: "bg-orange-100 text-orange-700", label: "Partial"   }
+            :           { bg: "bg-red-100    text-red-700",    label: "Low"       };
+  return (
+    <span
+      title={reason || ""}
+      className={`px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap cursor-default ${cfg.bg}`}>
+      {s}% {cfg.label}
+    </span>
+  );
 }
 
 export default function HRCandidates() {
   const router = useRouter();
 
-  const [user,            setUser]            = useState(null);
-  const [hrPlan,          setHrPlan]          = useState("free");
-  const [candidates,      setCandidates]      = useState([]);
-  const [loading,         setLoading]         = useState(true);
-  const [search,          setSearch]          = useState("");
-  const [selected,        setSelected]        = useState(null);
-  const [showFilter,      setShowFilter]      = useState(false);
-  const [filterStatus,    setFilterStatus]    = useState("All");
-  const [filterLocation,  setFilterLocation]  = useState("All");
-  const [filterDomain,    setFilterDomain]    = useState("All");
-  const [filterExp,       setFilterExp]       = useState("All");
-  const [deleteMsg,       setDeleteMsg]       = useState("");
-  const [revealedPhones,  setRevealedPhones]  = useState({});
-  const [showPremiumModal,setShowPremiumModal] = useState(false);
+  const [user,             setUser]             = useState(null);
+  const [hrId,             setHrId]             = useState(null);
+  const [hrPlan,           setHrPlan]           = useState("free");
+  const [candidates,       setCandidates]       = useState([]);
+  const [loading,          setLoading]          = useState(true);
+  const [search,           setSearch]           = useState("");
+  const [selected,         setSelected]         = useState(null);
+  const [showFilter,       setShowFilter]       = useState(false);
+  const [filterStatus,     setFilterStatus]     = useState("All");
+  const [filterLocation,   setFilterLocation]   = useState("All");
+  const [filterDomain,     setFilterDomain]     = useState("All");
+  const [filterExp,        setFilterExp]        = useState("All");
+  const [deleteMsg,        setDeleteMsg]        = useState("");
+  const [revealedPhones,   setRevealedPhones]   = useState({});
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+
+  // JD match state
+  const [jdText,           setJdText]           = useState("");
+  const [jdScores,         setJdScores]         = useState(null); // Map<id, {jd_score, match_reason}>
+  const [jdLoading,        setJdLoading]        = useState(false);
+  const [jdError,          setJdError]          = useState("");
+  const [showHighMatchOnly, setShowHighMatchOnly]= useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("hr_user");
     if (!stored) { router.push("/"); return; }
     const u = JSON.parse(stored);
     setUser(u);
+    setHrId(u.id);
 
-    // Fetch HR plan
     if (u.email) {
       supabase.from("hr_registry").select("plan").eq("email", u.email).single()
         .then(({ data }) => { if (data?.plan) setHrPlan(data.plan); });
@@ -106,10 +131,41 @@ export default function HRCandidates() {
     setLoading(true);
     const { data, error } = await supabase
       .from("candidates")
-      .select("id,name,email,phone,ai_score,jd_match,status,location,current_location,qualification,age,experience_years,experience_level,domain,skills,work_mode,resume_url")
+      .select("id,name,email,phone,ai_score,jd_match,status,location,current_location,qualification,age,experience_years,experience_level,domain,skills,work_mode,resume_url,education_degree,current_role,summary,uploaded_by_hr")
       .order("ai_score", { ascending: false });
     if (!error && data) setCandidates(data);
     setLoading(false);
+  };
+
+  // ── JD Match ──────────────────────────────────────────────────────────────────
+  const handleJdMatch = async () => {
+    if (!jdText.trim()) { setJdError("Please paste a job description first."); return; }
+    if (!hrId)          { setJdError("Not logged in."); return; }
+    setJdError("");
+    setJdLoading(true);
+    try {
+      const res  = await fetch("/api/hr/jd-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobDescription: jdText, hrId }),
+      });
+      const data = await res.json();
+      if (data.error) { setJdError(data.error); setJdLoading(false); return; }
+      // Build a lookup map id -> {jd_score, match_reason}
+      const map = {};
+      (data.scores || []).forEach(s => { map[s.id] = { jd_score: s.jd_score, match_reason: s.match_reason }; });
+      setJdScores(map);
+    } catch (err) {
+      setJdError(err.message);
+    }
+    setJdLoading(false);
+  };
+
+  const clearJdMatch = () => {
+    setJdScores(null);
+    setJdText("");
+    setJdError("");
+    setShowHighMatchOnly(false);
   };
 
   const togglePhone = (id) =>
@@ -131,20 +187,28 @@ export default function HRCandidates() {
   };
 
   const handleShortlist = async (candidate) => {
-    const { error } = await supabase.from("candidates").update({ status:"Shortlisted" }).eq("id", candidate.id);
+    const { error } = await supabase.from("candidates").update({ status: "Shortlisted" }).eq("id", candidate.id);
     if (!error) {
-      setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status:"Shortlisted" } : c));
-      setSelected(prev => prev ? { ...prev, status:"Shortlisted" } : null);
+      setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: "Shortlisted" } : c));
+      setSelected(prev => prev ? { ...prev, status: "Shortlisted" } : null);
     }
   };
 
-  // Filter option lists
+  // ── Filter options ─────────────────────────────────────────────────────────────
   const locations = ["All", ...new Set(candidates.map(c => c.current_location || c.location).filter(Boolean))];
   const domains   = ["All", ...new Set(candidates.map(c => c.domain).filter(Boolean))];
-  const expLevels = ["All","Fresher","Junior","Mid-level","Senior"];
-  const statuses  = ["All","Shortlisted","Reviewing","Pending","Rejected"];
+  const expLevels = ["All", "Fresher", "Junior", "Mid-level", "Senior"];
+  const statuses  = ["All", "Shortlisted", "Reviewing", "Pending", "Rejected"];
 
-  const filtered = candidates.filter(c => {
+  // ── Build display list (with JD scores merged in if active) ──────────────────
+  let displayList = candidates.map(c => ({
+    ...c,
+    _jd_score:  jdScores ? (jdScores[c.id]?.jd_score  ?? null) : null,
+    _jd_reason: jdScores ? (jdScores[c.id]?.match_reason ?? "") : "",
+  }));
+
+  // Apply standard filters
+  const filtered = displayList.filter(c => {
     const loc = c.current_location || c.location || "";
     const matchSearch   = !search ||
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -155,8 +219,14 @@ export default function HRCandidates() {
     const matchLocation = filterLocation === "All" || loc                === filterLocation;
     const matchDomain   = filterDomain   === "All" || c.domain           === filterDomain;
     const matchExp      = filterExp      === "All" || c.experience_level === filterExp;
-    return matchSearch && matchStatus && matchLocation && matchDomain && matchExp;
+    const matchHighOnly = !showHighMatchOnly || (c._jd_score != null && c._jd_score >= 70);
+    return matchSearch && matchStatus && matchLocation && matchDomain && matchExp && matchHighOnly;
   });
+
+  // Sort by JD score when active, else keep existing AI score order
+  const sortedFiltered = jdScores
+    ? [...filtered].sort((a, b) => (b._jd_score ?? -1) - (a._jd_score ?? -1))
+    : filtered;
 
   const activeFilters = [filterStatus, filterLocation, filterDomain, filterExp].filter(f => f !== "All").length;
   const resetFilters  = () => { setFilterStatus("All"); setFilterLocation("All"); setFilterDomain("All"); setFilterExp("All"); };
@@ -168,15 +238,15 @@ export default function HRCandidates() {
   };
 
   const StatusBadge = ({ status }) => {
-    const map = { Shortlisted:"bg-green-100 text-green-700", Reviewing:"bg-yellow-100 text-yellow-700", Pending:"bg-slate-100 text-slate-600", Rejected:"bg-red-100 text-red-700" };
+    const map = { Shortlisted: "bg-green-100 text-green-700", Reviewing: "bg-yellow-100 text-yellow-700", Pending: "bg-slate-100 text-slate-600", Rejected: "bg-red-100 text-red-700" };
     return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${map[status] || "bg-gray-100 text-gray-600"}`}>{status || "Pending"}</span>;
   };
 
-  const getInitials = (name) => name ? name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase() : "?";
+  const getInitials = (name) => name ? name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?";
   const getColor    = (name) => {
-    const colors = ["#1253A4","#0EA5C9","#10B981","#8B5CF6","#F59E0B","#EF4444","#6366F1","#EC4899"];
+    const colors = ["#1253A4", "#0EA5C9", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#6366F1", "#EC4899"];
     let hash = 0;
-    for (let i = 0; i < (name||"").length; i++) hash += name.charCodeAt(i);
+    for (let i = 0; i < (name || "").length; i++) hash += name.charCodeAt(i);
     return colors[hash % colors.length];
   };
 
@@ -227,7 +297,7 @@ export default function HRCandidates() {
               <Filter size={14}/> Filters
               {activeFilters > 0 && <span className="bg-white text-[#1253A4] rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">{activeFilters}</span>}
             </button>
-            <button onClick={() => handleExcelDownload(filtered, "ASSISTLANA_JobSeekers")}
+            <button onClick={() => handleExcelDownload(sortedFiltered, "ASSISTLANA_JobSeekers")}
               className="flex items-center gap-1 bg-[#10B981] text-white px-3 py-2 rounded-xl text-xs md:text-sm font-semibold hover:bg-[#059669] transition-all flex-shrink-0 whitespace-nowrap">
               <Download size={14}/> <span className="hidden sm:inline">Download Excel</span>
               {hrPlan !== "premium" && <Star size={12} className="text-yellow-300 fill-yellow-300"/>}
@@ -242,6 +312,52 @@ export default function HRCandidates() {
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-4 text-sm font-medium">{deleteMsg}</div>
           )}
 
+          {/* ── JD Match Section ── */}
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6 mb-6 shadow-sm">
+            <div className="font-bold text-[#1E293B] mb-3 flex items-center gap-2 text-sm md:text-base">
+              🎯 Find Best Candidates for Your Job
+            </div>
+            <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Paste Job Description</label>
+            <textarea
+              value={jdText}
+              onChange={e => setJdText(e.target.value)}
+              placeholder="We are looking for a React developer with 2+ years experience in Next.js, TypeScript, and REST APIs..."
+              rows={4}
+              className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm text-slate-700 outline-none focus:border-[#1253A4] resize-none transition-all bg-[#F8FAFC]"
+            />
+            {jdError && <div className="text-xs text-red-500 mt-1">{jdError}</div>}
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <button
+                onClick={handleJdMatch}
+                disabled={jdLoading || !jdText.trim()}
+                className="flex items-center gap-2 bg-[#1253A4] hover:bg-[#0d47a1] text-white px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                {jdLoading
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Scoring...</>
+                  : "🔍 Match & Sort Candidates"}
+              </button>
+              {jdScores && (
+                <>
+                  <button onClick={clearJdMatch}
+                    className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-semibold border border-[#E2E8F0] text-slate-600 hover:bg-[#F1F5F9] transition-all">
+                    <X size={14}/> Clear Match
+                  </button>
+                  <button
+                    onClick={() => setShowHighMatchOnly(v => !v)}
+                    className={`flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                      showHighMatchOnly
+                        ? "bg-green-500 text-white border-green-500"
+                        : "border-[#E2E8F0] text-slate-600 hover:bg-[#F1F5F9]"
+                    }`}>
+                    {showHighMatchOnly ? "✅ 70%+ Only" : "Show 70%+ matches only"}
+                  </button>
+                  <span className="text-xs text-slate-400 ml-auto">
+                    Scored {Object.keys(jdScores).length} of your candidates
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
           {/* ── Filter Panel ── */}
           {showFilter && (
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 md:p-6 mb-6 shadow-sm">
@@ -254,10 +370,10 @@ export default function HRCandidates() {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label:"Status",     val:filterStatus,   set:setFilterStatus,   opts:statuses  },
-                  { label:"Location",   val:filterLocation, set:setFilterLocation, opts:locations },
-                  { label:"Domain",     val:filterDomain,   set:setFilterDomain,   opts:domains   },
-                  { label:"Experience", val:filterExp,      set:setFilterExp,      opts:expLevels },
+                  { label: "Status",     val: filterStatus,   set: setFilterStatus,   opts: statuses  },
+                  { label: "Location",   val: filterLocation, set: setFilterLocation, opts: locations },
+                  { label: "Domain",     val: filterDomain,   set: setFilterDomain,   opts: domains   },
+                  { label: "Experience", val: filterExp,      set: setFilterExp,      opts: expLevels },
                 ].map(({ label, val, set, opts }) => (
                   <div key={label}>
                     <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">{label}</label>
@@ -277,11 +393,12 @@ export default function HRCandidates() {
           {/* Results count */}
           <div className="flex items-center justify-between mb-4">
             <div className="text-xs md:text-sm text-slate-500">
-              Showing <span className="font-bold text-[#1E293B]">{filtered.length}</span> of <span className="font-bold text-[#1E293B]">{candidates.length}</span>
+              Showing <span className="font-bold text-[#1E293B]">{sortedFiltered.length}</span> of <span className="font-bold text-[#1E293B]">{candidates.length}</span>
+              {jdScores && <span className="ml-2 text-[#1253A4] font-semibold text-xs">· Sorted by JD match</span>}
             </div>
-            <button onClick={() => handleExcelDownload(filtered, "Filtered_JobSeekers")}
+            <button onClick={() => handleExcelDownload(sortedFiltered, "Filtered_JobSeekers")}
               className="flex items-center gap-2 text-xs text-[#10B981] font-semibold hover:underline">
-              <Download size={12}/> Download filtered ({filtered.length})
+              <Download size={12}/> Download filtered ({sortedFiltered.length})
               {hrPlan !== "premium" && <Star size={10} className="text-yellow-400 fill-yellow-400"/>}
             </button>
           </div>
@@ -292,13 +409,14 @@ export default function HRCandidates() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-                    {["Job Seeker","Phone","Location","Domain","Experience","AI Score","JD Match","Status","Actions"].map(h => (
+                    {["Job Seeker", "Phone", "Location", "Domain", "Experience", "AI Score",
+                      jdScores ? "JD Match" : "JD Match", "Status", "Actions"].map(h => (
                       <th key={h} className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((c, i) => (
+                  {sortedFiltered.map((c, i) => (
                     <tr key={c.id || i} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC] transition-all">
 
                       {/* Job Seeker */}
@@ -353,12 +471,16 @@ export default function HRCandidates() {
 
                       {/* JD Match */}
                       <td className="py-3 px-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-14 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
-                            <div className="h-full bg-[#0EA5C9] rounded-full" style={{ width:`${c.jd_match||0}%` }}/>
+                        {jdScores ? (
+                          <JDMatchBadge score={c._jd_score} reason={c._jd_reason}/>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="w-14 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
+                              <div className="h-full bg-[#0EA5C9] rounded-full" style={{ width: `${c.jd_match || 0}%` }}/>
+                            </div>
+                            <span className="text-xs font-bold">{c.jd_match || 0}%</span>
                           </div>
-                          <span className="text-xs font-bold">{c.jd_match||0}%</span>
-                        </div>
+                        )}
                       </td>
 
                       {/* Status */}
@@ -377,7 +499,7 @@ export default function HRCandidates() {
               </table>
             </div>
 
-            {filtered.length === 0 && !loading && (
+            {sortedFiltered.length === 0 && !loading && (
               <div className="text-center py-16 text-slate-400">
                 <div className="text-4xl mb-3">👥</div>
                 <div className="font-semibold mb-1">{candidates.length === 0 ? "No job seekers yet" : "No results match your filters"}</div>
@@ -388,7 +510,7 @@ export default function HRCandidates() {
 
           {/* ── MOBILE: Cards ── */}
           <div className="md:hidden space-y-3">
-            {filtered.map((c, i) => (
+            {sortedFiltered.map((c, i) => (
               <div key={c.id || i} className="bg-white rounded-2xl border border-[#E2E8F0] p-4">
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: getColor(c.name) }}>
@@ -409,8 +531,11 @@ export default function HRCandidates() {
                 <div className="flex flex-wrap gap-2 mb-3">
                   <span className="text-xs bg-[#F1F5F9] text-slate-600 px-2 py-1 rounded-lg">📍 {c.current_location || c.location || "N/A"}</span>
                   <span className="text-xs bg-[#EFF6FF] text-[#1253A4] px-2 py-1 rounded-lg">{c.domain || "—"}</span>
-                  <span className="text-xs bg-[#F5F3FF] text-[#8B5CF6] px-2 py-1 rounded-lg">{c.experience_level || "—"}</span>
+                  <span className="text-xs bg-[#F5F3FF] text-[#8B5CF6] px-2 py-1 rounded-lg">{c.experience_level || (c.experience_years ? c.experience_years + " yrs" : "—")}</span>
                   <StatusBadge status={c.status}/>
+                  {jdScores && c._jd_score != null && (
+                    <JDMatchBadge score={c._jd_score} reason={c._jd_reason}/>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setSelected(c)} className="flex-1 flex items-center justify-center gap-1 p-2 bg-[#EFF6FF] text-[#1253A4] rounded-lg text-xs font-semibold"><Eye size={13}/> View</button>
@@ -470,15 +595,28 @@ export default function HRCandidates() {
                 </div>
               </div>
 
+              {/* JD match info in modal */}
+              {jdScores && selected._jd_score != null && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold text-blue-700">🎯 JD Match Score</span>
+                    <JDMatchBadge score={selected._jd_score} reason={selected._jd_reason}/>
+                  </div>
+                  {selected._jd_reason && (
+                    <div className="text-xs text-blue-600">{selected._jd_reason}</div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {[
                   ["📞 Phone",      selected.phone || "N/A"],
                   ["💼 Experience", selected.experience_level || (selected.experience_years ? selected.experience_years + " yrs" : "—")],
-                  ["🎯 JD Match",   (selected.jd_match || 0) + "%"],
+                  ["🎯 JD Match",   jdScores && selected._jd_score != null ? selected._jd_score + "%" : (selected.jd_match || 0) + "%"],
                   ["🏢 Work Mode",  selected.work_mode || "—"],
                   ["📊 Status",     selected.status || "Pending"],
-                  ["🎓 Qual",       selected.qualification || "—"],
-                ].map(([l,v],i) => (
+                  ["🎓 Education",  selected.education_degree || selected.qualification || "—"],
+                ].map(([l, v], i) => (
                   <div key={i} className="bg-[#F8FAFC] rounded-xl p-3">
                     <div className="text-xs text-slate-400 mb-0.5">{l}</div>
                     <div className="text-sm font-bold text-[#1E293B]">{v}</div>
@@ -497,11 +635,27 @@ export default function HRCandidates() {
                 </div>
               )}
 
+              {selected.summary && (
+                <div className="mb-4">
+                  <div className="text-xs font-bold text-slate-500 mb-1 uppercase">Summary</div>
+                  <div className="text-xs text-slate-600 bg-[#F8FAFC] rounded-xl p-3">{selected.summary}</div>
+                </div>
+              )}
+
               {selected.resume_url && (
                 <div className="mb-4">
                   <a href={selected.resume_url} target="_blank" rel="noreferrer"
                     className="flex items-center gap-2 text-sm text-[#0EA5C9] font-semibold hover:underline">
                     📄 View Resume PDF
+                  </a>
+                </div>
+              )}
+
+              {selected.linkedin_url && (
+                <div className="mb-4">
+                  <a href={selected.linkedin_url} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-2 text-sm text-[#0EA5C9] font-semibold hover:underline">
+                    🔗 LinkedIn Profile
                   </a>
                 </div>
               )}

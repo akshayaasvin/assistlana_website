@@ -146,19 +146,15 @@ export default function PublicHeader({ onSignIn, onGetStarted }) {
 
         {/* Desktop CTAs */}
         <div className="hidden lg:flex items-center gap-3">
-          <button onClick={onSignIn}
-            className="px-4 py-2 text-sm font-semibold text-[#0F172A] hover:text-[#2563EB] transition-colors">
-            Sign In
-          </button>
           {onGetStarted ? (
             <button onClick={onGetStarted}
               className="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#2563EB] to-[#06B6D4] rounded-xl hover:opacity-90 transition-all shadow-md shadow-blue-200">
-              Try AI Free
+              AI Resume Scanning
             </button>
           ) : (
             <Link href="/"
               className="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#2563EB] to-[#06B6D4] rounded-xl hover:opacity-90 transition-all shadow-md shadow-blue-200">
-              Try AI Free
+              AI Resume Scanning
             </Link>
           )}
         </div>
@@ -238,19 +234,15 @@ export default function PublicHeader({ onSignIn, onGetStarted }) {
           </Link>
 
           <div className="pt-3 border-t border-gray-100 mt-2 flex gap-2">
-            <button onClick={() => { setMobileOpen(false); onSignIn?.(); }}
-              className="flex-1 py-2.5 text-sm font-semibold text-[#0F172A] border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
-              Sign In
-            </button>
             {onGetStarted ? (
               <button onClick={() => { setMobileOpen(false); onGetStarted(); }}
                 className="flex-1 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#2563EB] to-[#06B6D4] rounded-xl hover:opacity-90 transition-all">
-                Try AI Free
+                AI Resume Scanning
               </button>
             ) : (
               <Link href="/" onClick={() => setMobileOpen(false)}
                 className="flex-1 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#2563EB] to-[#06B6D4] rounded-xl hover:opacity-90 transition-all text-center">
-                Try AI Free
+                AI Resume Scanning
               </Link>
             )}
           </div>
