@@ -20,6 +20,89 @@ function Status({ children, type = "error" }) {
   return <div className={`flex items-start gap-2 rounded-xl px-4 py-3 text-sm ${type === "success" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"}`}><AlertCircle size={17} className="mt-0.5 shrink-0" />{children}</div>;
 }
 
+
+const ANSWER_INDEX = { A: 0, B: 1, C: 2, D: 3 };
+
+function normalizeMcqQuestion(question) {
+  const id = String(
+    question.Question_ID ??
+    question.questionId ??
+    question.question_id ??
+    question.id ??
+    ""
+  ).trim();
+
+  const skillName = String(
+    question.Skill ??
+    question.skill ??
+    ""
+  ).trim();
+
+  const text = String(
+    question.Question ??
+    question.question ??
+    question.q ??
+    ""
+  ).trim();
+
+  let options;
+  if (Array.isArray(question.options)) {
+    options = question.options;
+  } else if (question.options && typeof question.options === "object") {
+    options = [
+      question.options.A ?? question.options.Option_A,
+      question.options.B ?? question.options.Option_B,
+      question.options.C ?? question.options.Option_C,
+      question.options.D ?? question.options.Option_D,
+    ];
+  } else {
+    options = [
+      question.Option_A ?? question.optionA,
+      question.Option_B ?? question.optionB,
+      question.Option_C ?? question.optionC,
+      question.Option_D ?? question.optionD,
+    ];
+  }
+
+  // Do NOT filter the options array: A/B/C/D positions must never move.
+  options = options.map(value => value == null ? "" : String(value).trim());
+
+  const correctRaw = String(
+    question.Correct_Answer ??
+    question.correctAnswer ??
+    question.correct_answer ??
+    question.c ??
+    ""
+  ).trim().toUpperCase();
+
+  const correctIndex =
+    Number.isInteger(question.c) ? question.c : ANSWER_INDEX[correctRaw];
+
+  return {
+    id,
+    skill: skillName,
+    q: text,
+    a: options,
+    c: Number.isInteger(correctIndex) && correctIndex >= 0 && correctIndex <= 3
+      ? correctIndex
+      : -1,
+    difficulty: String(question.Difficulty ?? question.difficulty ?? "").trim(),
+    explanation: String(question.Explanation ?? question.explanation ?? "").trim(),
+  };
+}
+
+function isValidMcq(question, requestedSkill) {
+  return (
+    question.id &&
+    question.q &&
+    question.skill === requestedSkill &&
+    question.a.length === 4 &&
+    question.a.every(Boolean) &&
+    question.c >= 0 &&
+    question.c <= 3
+  );
+}
+
 export default function SkillsExperience({ skill }) {
   const [activeLesson, setActiveLesson] = useState(0);
   const [showAllLessons, setShowAllLessons] = useState(false);
@@ -258,23 +341,22 @@ export default function SkillsExperience({ skill }) {
       if (!response.ok || data.success === false) {
         throw new Error(data.error || `The question service returned HTTP ${response.status}.`);
       }
-      const questionRows = Array.isArray(data.questions) ? data.questions : Array.isArray(data.data) ? data.data : [];
-      const received = questionRows.filter(question => String(question.skill || "").trim() === requestedSkill).map(question => {
-        const rawOptions = Array.isArray(question.options)
-          ? question.options
-          : question.options
-            ? [question.options.A, question.options.B, question.options.C, question.options.D]
-            : [question.optionA || question.Option_A, question.optionB || question.Option_B, question.optionC || question.Option_C, question.optionD || question.Option_D];
-        return {
-          questionId: question.questionId || question.question_id || question.Question_ID || question.id,
-          skill: requestedSkill,
-          question: question.question || question.Question,
-          difficulty: question.difficulty || question.Difficulty,
-          options: rawOptions.filter(option => typeof option === "string" && option.trim()),
-        };
-      });
+      const questionRows = Array.isArray(data.questions)
+        ? data.questions
+        : Array.isArray(data.data)
+          ? data.data
+          : [];
+
+      const received = questionRows
+        .map(normalizeMcqQuestion)
+        .filter(question => isValidMcq(question, requestedSkill));
+
       if (received.length < 30) throw new Error("not-enough");
-      shuffled = [...received].sort(() => Math.random() - 0.5).slice(0, 30);
+
+      shuffled = [...received]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 30);
+
       setQuestions(shuffled);
       setAnswers({});
       setQuestionIndex(0);
@@ -362,17 +444,96 @@ export default function SkillsExperience({ skill }) {
 
   async function submitExam() {
     if (!questions.length || loading || stage !== "exam" || examSubmittedRef.current) return;
+
     examSubmittedRef.current = true;
-    setLoading(true); setError("");
-    const payload = { action: "examResult", registrationId, examId, fullName: form.fullName, email: form.email, skill: skill.name, examStart, examEnd: new Date().toISOString(), totalQuestions: questions.length, answers: Object.entries(answers).map(([questionId, selectedAnswer]) => ({ questionId, selectedAnswer })), ...signals, disqualified: signals.warnings >= 3, disqualificationReason: signals.warnings >= 3 ? "Maximum warnings reached" : "" };
+    setLoading(true);
+    setError("");
+
+    // Score from the final answers map, not from navigation history.
+    // Answers are stored as 0/1/2/3 and the sheet's Correct_Answer A/B/C/D
+    // is normalized to the same indexes.
+    const answerRows = questions.map(question => {
+      const selectedIndex = answers[question.id];
+      return {
+        questionId: question.id,
+        selectedAnswer: Number.isInteger(selectedIndex)
+          ? String.fromCharCode(65 + selectedIndex)
+          : "",
+        selectedIndex: Number.isInteger(selectedIndex) ? selectedIndex : null,
+      };
+    });
+
+    const correctCount = questions.reduce((count, question) => {
+      return count + (answers[question.id] === question.c ? 1 : 0);
+    }, 0);
+
+    const totalQuestions = questions.length;
+    const wrongCount = totalQuestions - correctCount;
+    const scorePercentage = totalQuestions
+      ? (correctCount / totalQuestions) * 100
+      : 0;
+
+    const disqualified = signals.warnings >= 3;
+    const passed = !disqualified && scorePercentage >= 75;
+
+    const payload = {
+      action: "examResult",
+      registrationId,
+      examId,
+      fullName: form.fullName,
+      email: form.email,
+      skill: skill.name,
+      examStart,
+      examEnd: new Date().toISOString(),
+      totalQuestions,
+      correctCount,
+      wrongCount,
+      scorePercentage,
+      passingScore: 75,
+      answers: answerRows,
+      ...signals,
+      disqualified,
+      disqualificationReason: disqualified ? "Maximum warnings reached" : "",
+    };
+
     try {
-      const response = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+      });
+
       const data = await response.json();
       if (!response.ok) throw new Error("result");
-      setResult(data); setCertificate((data.status === "PASS" || data.passed === true) ? data.certificate || null : null); setStage("result"); stopLocalMonitoring();
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    } catch { examSubmittedRef.current = false; setError("Unable to connect to the certification server. Please try again."); }
-    finally { setLoading(false); }
+
+      const finalResult = {
+        ...data,
+        totalQuestions,
+        correctCount,
+        wrongCount,
+        scorePercentage,
+        score: scorePercentage,
+        passed,
+        disqualified,
+        status: disqualified ? "DISQUALIFIED" : passed ? "PASS" : "FAIL",
+      };
+
+      setResult(finalResult);
+      setCertificate(
+        passed ? data.certificate || null : null
+      );
+      setStage("result");
+      stopLocalMonitoring();
+
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    } catch {
+      examSubmittedRef.current = false;
+      setError("Unable to connect to the certification server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -401,7 +562,7 @@ export default function SkillsExperience({ skill }) {
 
       {stage === "instructions" && <div className="mt-7"><div className="grid gap-4 sm:grid-cols-3">{[[Clock3, "30 minutes"], [FileBadge, "30 questions"], [ShieldCheck, "75% to pass"]].map(([Icon, text]) => <div key={text} className="border border-slate-200 bg-white p-4 text-center"><Icon className="mx-auto text-blue-700" size={22} /><p className="mt-3 text-sm font-bold">{text}</p></div>)}</div><div className="mt-6 border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-900"><strong>Browser-based monitoring:</strong> the assessment may use camera and microphone permission, fullscreen status, tab visibility, face presence, multiple-face signals, and basic audio activity. These signals are not perfectly accurate. No camera or microphone recordings are stored by this exam interface.</div><p className="mt-5 text-sm leading-7 text-slate-600">You will receive warnings for relevant events. Three warnings can disqualify the attempt. Keep this assessment window visible and answer independently.</p><div className="mt-5 grid gap-2 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 sm:grid-cols-2"><span>Camera: <strong>{mediaDiagnostics.camera}</strong></span><span>Microphone: <strong>{mediaDiagnostics.microphone}</strong></span><span>Camera permission: <strong>{mediaDiagnostics.cameraPermission}</strong></span><span>Microphone permission: <strong>{mediaDiagnostics.microphonePermission}</strong></span></div><button onClick={startExam} disabled={loading} className="mt-7 w-full rounded-xl bg-blue-700 px-5 py-3.5 text-sm font-bold text-white disabled:opacity-50">{loading ? "Loading questions..." : "Request permissions and start"}</button></div>}
 
-      {stage === "exam" && currentQuestion && <div className="mt-7"><div className="flex flex-wrap items-center justify-between gap-3 text-sm font-bold"><span>Question {questionIndex + 1} of {questions.length}</span><span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-blue-700"><Clock3 size={15} /> {minutes}:{seconds}</span></div><div className="mt-4 h-2 bg-slate-200"><div className="h-full bg-blue-600 transition-all" style={{ width: `${((questionIndex + 1) / questions.length) * 100}%` }} /></div><div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600"><span>{monitoringStatus}</span><span className="font-bold text-amber-700">Warning {Math.min(signals.warnings, 3)} of 3</span></div><video ref={videoRef} autoPlay muted playsInline className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden="true" /><div className="mt-8 border border-slate-200 bg-white p-6"><p className="text-lg font-extrabold leading-8">{currentQuestion.question}</p><div className="mt-6 space-y-3">{currentQuestion.options.map((option, index) => { const optionKey = String.fromCharCode(65 + index); const questionKey = currentQuestion.questionId || currentQuestion.id; return <label key={`${questionKey}-${optionKey}`} className={`flex cursor-pointer gap-3 border p-4 text-sm ${answers[questionKey] === optionKey ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300"}`}><input type="radio" name={`question-${questionKey}`} checked={answers[questionKey] === optionKey} onChange={() => setAnswers(current => ({ ...current, [questionKey]: optionKey }))} />{option}</label>; })}</div></div><div className="mt-6 flex justify-between gap-3"><button disabled={questionIndex === 0} onClick={() => setQuestionIndex(value => value - 1)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold disabled:opacity-40">Previous</button>{questionIndex === questions.length - 1 ? <button onClick={submitExam} disabled={loading} className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? "Submitting..." : "Submit assessment"}</button> : <button onClick={() => setQuestionIndex(value => value + 1)} className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white">Next</button>}</div><p className="mt-5 text-xs text-slate-500">Tab switches: {signals.tabSwitchCount}. Fullscreen exits: {signals.fullscreenExitCount}. Face absence: {signals.faceAbsentCount}. Multiple faces: {signals.multipleFaceCount}. Audio warnings: {signals.audioWarningCount}.</p></div>}
+      {stage === "exam" && currentQuestion && <div className="mt-7"><div className="flex flex-wrap items-center justify-between gap-3 text-sm font-bold"><span>Question {questionIndex + 1} of {questions.length}</span><span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-blue-700"><Clock3 size={15} /> {minutes}:{seconds}</span></div><div className="mt-4 h-2 bg-slate-200"><div className="h-full bg-blue-600 transition-all" style={{ width: `${((questionIndex + 1) / questions.length) * 100}%` }} /></div><div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600"><span>{monitoringStatus}</span><span className="font-bold text-amber-700">Warning {Math.min(signals.warnings, 3)} of 3</span></div><video ref={videoRef} autoPlay muted playsInline className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden="true" /><div className="mt-8 border border-slate-200 bg-white p-6"><p className="text-lg font-extrabold leading-8">{currentQuestion.q}</p><div className="mt-6 space-y-3">{currentQuestion.a.map((option, index) => { const questionKey = currentQuestion.id; const optionLabel = String.fromCharCode(65 + index); return <label key={`${questionKey}-${optionLabel}`} className={`flex cursor-pointer gap-3 border p-4 text-sm ${answers[questionKey] === index ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300"}`}><input type="radio" name={`question-${questionKey}`} value={index} checked={answers[questionKey] === index} onChange={() => setAnswers(current => ({ ...current, [questionKey]: index }))} /><span><strong className="mr-2">{optionLabel}.</strong>{option}</span></label>; })}</div></div><div className="mt-6 flex justify-between gap-3"><button disabled={questionIndex === 0} onClick={() => setQuestionIndex(value => value - 1)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold disabled:opacity-40">Previous</button>{questionIndex === questions.length - 1 ? <button onClick={submitExam} disabled={loading} className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? "Submitting..." : "Submit assessment"}</button> : <button onClick={() => setQuestionIndex(value => value + 1)} className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white">Next</button>}</div><p className="mt-5 text-xs text-slate-500">Tab switches: {signals.tabSwitchCount}. Fullscreen exits: {signals.fullscreenExitCount}. Face absence: {signals.faceAbsentCount}. Multiple faces: {signals.multipleFaceCount}. Audio warnings: {signals.audioWarningCount}.</p></div>}
 
       {stage === "result" && <div className="mt-7">{result?.disqualified || result?.status === "DISQUALIFIED" ? <Status>Your assessment has been disqualified according to the assessment rules.</Status> : result?.passed || result?.status === "PASS" ? <div className="rounded-xl bg-emerald-50 p-6 text-emerald-900"><CheckCircle2 size={28} /><h3 className="mt-4 text-2xl font-black">Congratulations, you passed.</h3><p className="mt-2">{skill.name} · Score: <strong>{result.scorePercentage ?? result.score ?? "Recorded"}%</strong></p>{certificate && <div className="mt-5 border border-emerald-200 bg-white p-4 text-sm"><strong>Certificate generated successfully</strong><p className="mt-2">Certificate ID: {certificate.certificateId || certificate.id || "Provided by backend"}</p>{certificate.certificateUrl && <a className="mt-3 inline-flex items-center gap-2 font-bold text-blue-700" href={certificate.certificateUrl} target="_blank" rel="noreferrer">View certificate <ExternalLink size={14} /></a>}<p className="mt-3 text-slate-600">Your certificate has been sent to your registered email address.</p></div>}</div> : <div className="rounded-xl bg-amber-50 p-6 text-amber-900"><h3 className="text-2xl font-black">Thank you for completing the assessment.</h3><p className="mt-3">Your score: <strong>{result?.scorePercentage ?? result?.score ?? "Recorded"}%</strong></p><p className="mt-2">Passing score: 75%. Result: Not passed.</p></div>}</div>}
     </div></section>}
