@@ -23,8 +23,11 @@ const COMPANY_COL = [
 const PORTAL_COL = [
   { label: "Jobs",              href: "/jobs" },
   { label: "Internships",       href: "/apply" },
+<<<<<<< HEAD
   { label: "ASSISTLANA Skills", href: "/skills" },
   { label: "Learn",             href: "/learn" },
+=======
+>>>>>>> 7ac3c0a5efab5823de59028f0b714db5e573bacf
 ];
 
 const SOCIAL = [

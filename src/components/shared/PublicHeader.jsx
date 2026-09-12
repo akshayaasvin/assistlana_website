@@ -114,10 +114,13 @@ export default function PublicHeader({ onSignIn, onGetStarted }) {
             className="px-3.5 py-2 rounded-lg text-sm font-medium text-[#64748B] hover:text-[#2563EB] hover:bg-blue-50 transition-all">
             About
           </Link>
+<<<<<<< HEAD
           <Link href="/skills"
             className="px-3.5 py-2 rounded-lg text-sm font-semibold text-[#2563EB] hover:bg-blue-50 transition-all">
             Skills
           </Link>
+=======
+>>>>>>> 7ac3c0a5efab5823de59028f0b714db5e573bacf
 
           {/* Resources dropdown */}
           <div className="relative"
@@ -212,10 +215,13 @@ export default function PublicHeader({ onSignIn, onGetStarted }) {
               {l.label}
             </Link>
           ))}
+<<<<<<< HEAD
           <Link href="/learn" onClick={() => setMobileOpen(false)}
             className="block px-4 py-3 rounded-xl text-sm font-semibold text-[#2563EB] hover:bg-blue-50 transition-all">
             Learn
           </Link>
+=======
+>>>>>>> 7ac3c0a5efab5823de59028f0b714db5e573bacf
 
           {/* Resources accordion */}
           <div>

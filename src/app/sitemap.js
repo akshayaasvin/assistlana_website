@@ -1,5 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+<<<<<<< HEAD
 import { skills } from '@/lib/skillsData'
+=======
+>>>>>>> 7ac3c0a5efab5823de59028f0b714db5e573bacf
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -17,6 +20,7 @@ export default async function sitemap() {
     { url: `${baseUrl}/contact`,          lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${baseUrl}/hr/signup`,        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${baseUrl}/candidate/signup`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
+<<<<<<< HEAD
     { url: `${baseUrl}/skills`,          lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.9 },
     { url: `${baseUrl}/learn`,           lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
   ]
@@ -28,6 +32,10 @@ export default async function sitemap() {
     priority: 0.8,
   }))
 
+=======
+  ]
+
+>>>>>>> 7ac3c0a5efab5823de59028f0b714db5e573bacf
   let jobPages = []
   try {
     const { data: jobs } = await supabase
@@ -59,5 +67,9 @@ export default async function sitemap() {
     }
   } catch (e) {}
 
+<<<<<<< HEAD
   return [...staticPages, ...skillPages, ...jobPages, ...internshipPages]
+=======
+  return [...staticPages, ...jobPages, ...internshipPages]
+>>>>>>> 7ac3c0a5efab5823de59028f0b714db5e573bacf
 }
