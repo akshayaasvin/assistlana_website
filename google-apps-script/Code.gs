@@ -4,22 +4,20 @@
  *
  * GOOGLE APPS SCRIPT BACKEND
  *
- * Features:
- * - Registration
- * - Skill-based MCQ API
- * - Secure public questions
- * - Server-side scoring
- * - Registration/skill validation
+ * FIXED VERSION
+ *
+ * FIXES:
+ * - Google Sheet MCQ -> frontend question mapping
+ * - Always returns 4 MCQ options
+ * - Active = YES only
+ * - Server-side answer validation
+ * - Accepts A/B/C/D OR 0/1/2/3
+ * - Correct scoring
+ * - Final score calculated once
  * - Duplicate exam protection
  * - 75% passing score
  * - 3-warning disqualification
- * - Google Slides certificate generation
- * - PDF certificate
- * - Email certificate
- *
- * IMPORTANT:
- * Questions are maintained in Google Sheet:
- * MCQ_Questions
+ * - Certificate generation
  ************************************************************/
 
 
@@ -42,38 +40,20 @@ const CONFIG = {
     "atchayaraj20@gmail.com",
 
   DEFAULTS: {
-
     PASSING_SCORE: 75,
-
     TOTAL_QUESTIONS: 30,
-
     EXAM_DURATION_MINUTES: 30,
-
     MAX_WARNINGS: 3,
-
     CERTIFICATE_EMAIL: "ENABLED",
-
     PROCTORING: "ENABLED"
-
   },
 
   SHEETS: {
-
-    REGISTRATIONS:
-      "Registrations",
-
-    EXAM_RESULTS:
-      "Exam_Results",
-
-    CERTIFICATES:
-      "Certificates",
-
-    MCQ_QUESTIONS:
-      "MCQ_Questions",
-
-    SETTINGS:
-      "Settings"
-
+    REGISTRATIONS: "Registrations",
+    EXAM_RESULTS: "Exam_Results",
+    CERTIFICATES: "Certificates",
+    MCQ_QUESTIONS: "MCQ_Questions",
+    SETTINGS: "Settings"
   }
 
 };
@@ -170,14 +150,13 @@ function doGet(e) {
 
     ensureSheetsAndHeaders();
 
-    const action =
-      String(
-        e &&
-        e.parameter &&
-        e.parameter.action
-          ? e.parameter.action
-          : "ping"
-      );
+    const action = String(
+      e &&
+      e.parameter &&
+      e.parameter.action
+        ? e.parameter.action
+        : "ping"
+    ).trim();
 
 
     // ------------------------------------------------------
@@ -187,12 +166,8 @@ function doGet(e) {
     if (action === "ping") {
 
       return jsonResponse({
-
         success: true,
-
-        message:
-          "ASSISTLANA Skills API is running."
-
+        message: "ASSISTLANA Skills API is running."
       });
 
     }
@@ -205,12 +180,8 @@ function doGet(e) {
     if (action === "getSettings") {
 
       return jsonResponse({
-
         success: true,
-
-        data:
-          getSettings()
-
+        data: getSettings()
       });
 
     }
@@ -222,21 +193,16 @@ function doGet(e) {
 
     if (action === "getQuestions") {
 
-      const skill =
-        String(
-          e.parameter.skill || ""
-        ).trim();
+      const skill = String(
+        e.parameter.skill || ""
+      ).trim();
 
 
       if (!skill) {
 
         return jsonResponse({
-
           success: false,
-
-          error:
-            "Skill is required."
-
+          error: "Skill is required."
         });
 
       }
@@ -250,12 +216,8 @@ function doGet(e) {
 
 
     return jsonResponse({
-
       success: false,
-
-      error:
-        "Unsupported action."
-
+      error: "Unsupported action."
     });
 
   }
@@ -265,12 +227,8 @@ function doGet(e) {
     console.error(error);
 
     return jsonResponse({
-
       success: false,
-
-      error:
-        "Request could not be completed."
-
+      error: "Request could not be completed."
     });
 
   }
@@ -284,14 +242,11 @@ function doGet(e) {
 
 function doPost(e) {
 
-  const lock =
-    LockService.getScriptLock();
-
+  const lock = LockService.getScriptLock();
 
   try {
 
     lock.waitLock(30000);
-
 
     ensureSheetsAndHeaders();
 
@@ -303,12 +258,8 @@ function doPost(e) {
     ) {
 
       return jsonResponse({
-
         success: false,
-
-        error:
-          "Request body is empty."
-
+        error: "Request body is empty."
       });
 
     }
@@ -316,43 +267,34 @@ function doPost(e) {
 
     let body;
 
-
     try {
 
-      body =
-        JSON.parse(
-          e.postData.contents
-        );
+      body = JSON.parse(
+        e.postData.contents
+      );
 
     }
 
     catch (error) {
 
       return jsonResponse({
-
         success: false,
-
-        error:
-          "Invalid JSON request."
-
+        error: "Invalid JSON request."
       });
 
     }
 
 
-    const action =
-      String(
-        body.action || ""
-      );
+    const action = String(
+      body.action || ""
+    ).trim();
 
 
     // ------------------------------------------------------
     // REGISTRATION
     // ------------------------------------------------------
 
-    if (
-      action === "register"
-    ) {
+    if (action === "register") {
 
       return jsonResponse(
         registerCandidate(body)
@@ -365,9 +307,7 @@ function doPost(e) {
     // EXAM RESULT
     // ------------------------------------------------------
 
-    if (
-      action === "examResult"
-    ) {
+    if (action === "examResult") {
 
       return jsonResponse(
         submitExam(body)
@@ -377,12 +317,8 @@ function doPost(e) {
 
 
     return jsonResponse({
-
       success: false,
-
-      error:
-        "Unsupported action."
-
+      error: "Unsupported action."
     });
 
   }
@@ -392,12 +328,8 @@ function doPost(e) {
     console.error(error);
 
     return jsonResponse({
-
       success: false,
-
-      error:
-        "Server error."
-
+      error: "Server error."
     });
 
   }
@@ -405,9 +337,7 @@ function doPost(e) {
   finally {
 
     try {
-
       lock.releaseLock();
-
     }
 
     catch (ignore) {}
@@ -423,9 +353,7 @@ function doPost(e) {
 
 function registerCandidate(body) {
 
-
   const requiredFields = [
-
     "fullName",
     "email",
     "mobile",
@@ -436,7 +364,6 @@ function registerCandidate(body) {
     "collegeCompany",
     "passoutYear",
     "skill"
-
   ];
 
 
@@ -446,9 +373,7 @@ function registerCandidate(body) {
     i++
   ) {
 
-    const field =
-      requiredFields[i];
-
+    const field = requiredFields[i];
 
     if (
       !String(
@@ -457,13 +382,8 @@ function registerCandidate(body) {
     ) {
 
       return {
-
         success: false,
-
-        error:
-          field +
-          " is required."
-
+        error: field + " is required."
       };
 
     }
@@ -471,43 +391,24 @@ function registerCandidate(body) {
   }
 
 
-  // --------------------------------------------------------
-  // EMAIL
-  // --------------------------------------------------------
-
-  if (
-    !isValidEmail(body.email)
-  ) {
+  if (!isValidEmail(body.email)) {
 
     return {
-
       success: false,
-
-      error:
-        "Valid email is required."
-
+      error: "Valid email is required."
     };
 
   }
 
 
-  // --------------------------------------------------------
-  // CONSENT
-  // --------------------------------------------------------
-
   if (
     body.consent !== true &&
-    String(body.consent).toLowerCase() !==
-      "true"
+    String(body.consent).toLowerCase() !== "true"
   ) {
 
     return {
-
       success: false,
-
-      error:
-        "General consent is required."
-
+      error: "General consent is required."
     };
 
   }
@@ -515,30 +416,47 @@ function registerCandidate(body) {
 
   if (
     body.proctoringConsent !== true &&
-    String(body.proctoringConsent).toLowerCase() !==
-      "true"
+    String(body.proctoringConsent).toLowerCase() !== "true"
   ) {
 
     return {
-
       success: false,
-
-      error:
-        "Proctoring consent is required."
-
+      error: "Proctoring consent is required."
     };
 
   }
 
 
-  // --------------------------------------------------------
-  // DATABASE
-  // --------------------------------------------------------
+  // Prevent duplicate registration for same skill/email
 
-  const sheet =
-    getSheet(
-      CONFIG.SHEETS.REGISTRATIONS
-    );
+  const existing = findRow(
+    CONFIG.SHEETS.REGISTRATIONS,
+    "Email",
+    String(body.email).trim().toLowerCase()
+  );
+
+
+  if (existing) {
+
+    if (
+      normalize(existing.Skill) ===
+      normalize(body.skill)
+    ) {
+
+      return {
+        success: false,
+        error:
+          "This email is already registered for this skill."
+      };
+
+    }
+
+  }
+
+
+  const sheet = getSheet(
+    CONFIG.SHEETS.REGISTRATIONS
+  );
 
 
   const registrationId =
@@ -554,35 +472,20 @@ function registerCandidate(body) {
   sheet.appendRow([
 
     registrationId,
-
     new Date(),
-
     String(body.fullName).trim(),
-
     email,
-
     body.mobile || "",
-
     body.age || "",
-
     body.city || "",
-
     body.state || "",
-
     body.qualification || "",
-
     body.collegeCompany || "",
-
     body.passoutYear || "",
-
     String(body.skill).trim(),
-
     body.linkedin || "",
-
     "YES",
-
     "YES",
-
     "REGISTERED"
 
   ]);
@@ -614,7 +517,6 @@ function registerCandidate(body) {
 
 function getPublicQuestions(skill) {
 
-
   const rows =
     readRows(
       CONFIG.SHEETS.MCQ_QUESTIONS
@@ -625,95 +527,75 @@ function getPublicQuestions(skill) {
     normalize(skill);
 
 
-  const questions =
-    rows
+  const questions = rows
 
-      .filter(
-        function(row) {
+    .filter(function(row) {
 
-          return (
+      return (
 
-            normalize(
-              row.Skill
-            ) ===
-            normalizedSkill
+        normalize(row.Skill) ===
+        normalizedSkill
 
-            &&
+        &&
 
-            isActive(
-              row.Active
-            )
+        isActive(row.Active)
 
-          );
-
-        }
-      )
-
-      .map(
-        function(row) {
-
-          // IMPORTANT:
-          // Correct_Answer is NEVER returned.
-          // Explanation is NEVER returned.
-
-          return {
-
-            questionId:
-              String(
-                row.Question_ID
-              ),
-
-            skill:
-              String(
-                row.Skill
-              ),
-
-            question:
-              String(
-                row.Question
-              ),
-
-            options: {
-
-              A:
-                String(
-                  row.Option_A
-                ),
-
-              B:
-                String(
-                  row.Option_B
-                ),
-
-              C:
-                String(
-                  row.Option_C
-                ),
-
-              D:
-                String(
-                  row.Option_D
-                )
-
-            },
-
-            difficulty:
-              String(
-                row.Difficulty || ""
-              )
-
-          };
-
-        }
       );
+
+    })
+
+    .map(function(row) {
+
+      const optionA =
+        String(row.Option_A || "").trim();
+
+      const optionB =
+        String(row.Option_B || "").trim();
+
+      const optionC =
+        String(row.Option_C || "").trim();
+
+      const optionD =
+        String(row.Option_D || "").trim();
+
+
+      // IMPORTANT:
+      // Frontend format:
+      //
+      // id = Question_ID
+      // q  = Question
+      // a  = [A,B,C,D]
+      //
+      // Correct answer is NOT sent.
+
+      return {
+
+        id:
+          String(row.Question_ID || "").trim(),
+
+        q:
+          String(row.Question || "").trim(),
+
+        a: [
+          optionA,
+          optionB,
+          optionC,
+          optionD
+        ],
+
+        difficulty:
+          String(row.Difficulty || "").trim()
+
+      };
+
+    });
 
 
   return {
 
     success: true,
 
-    data:
-      questions
+    data: questions
 
   };
 
@@ -725,7 +607,6 @@ function getPublicQuestions(skill) {
 // ==========================================================
 
 function submitExam(body) {
-
 
   // --------------------------------------------------------
   // REQUIRED
@@ -808,12 +689,8 @@ function submitExam(body) {
   // --------------------------------------------------------
 
   if (
-    normalize(
-      registration.Email
-    ) !==
-    normalize(
-      body.email
-    )
+    normalize(registration.Email) !==
+    normalize(body.email)
   ) {
 
     return {
@@ -833,12 +710,8 @@ function submitExam(body) {
   // --------------------------------------------------------
 
   if (
-    normalize(
-      registration.Skill
-    ) !==
-    normalize(
-      body.skill
-    )
+    normalize(registration.Skill) !==
+    normalize(body.skill)
   ) {
 
     return {
@@ -864,35 +737,27 @@ function submitExam(body) {
 
 
   // --------------------------------------------------------
-  // ACTIVE QUESTIONS FOR THIS SKILL
+  // ACTIVE QUESTIONS
   // --------------------------------------------------------
 
   const questionRows =
     readRows(
       CONFIG.SHEETS.MCQ_QUESTIONS
     )
-      .filter(
-        function(row) {
+    .filter(function(row) {
 
-          return (
+      return (
 
-            normalize(
-              row.Skill
-            ) ===
-            normalize(
-              registration.Skill
-            )
+        normalize(row.Skill) ===
+        normalize(registration.Skill)
 
-            &&
+        &&
 
-            isActive(
-              row.Active
-            )
+        isActive(row.Active)
 
-          );
-
-        }
       );
+
+    });
 
 
   // --------------------------------------------------------
@@ -902,21 +767,36 @@ function submitExam(body) {
   const questionMap = {};
 
 
-  questionRows.forEach(
-    function(row) {
+  questionRows.forEach(function(row) {
 
-      questionMap[
-        String(
-          row.Question_ID
-        )
-      ] = row;
+    const id =
+      String(row.Question_ID || "").trim();
 
+    if (id) {
+      questionMap[id] = row;
     }
-  );
+
+  });
 
 
   // --------------------------------------------------------
-  // VALIDATE + SCORE
+  // SETTINGS
+  // --------------------------------------------------------
+
+  const settings =
+    getSettings();
+
+
+  const totalQuestions =
+    Number(
+      settings.Total_Questions ||
+      settings.totalQuestions ||
+      CONFIG.DEFAULTS.TOTAL_QUESTIONS
+    );
+
+
+  // --------------------------------------------------------
+  // SCORE
   // --------------------------------------------------------
 
   let correct = 0;
@@ -931,22 +811,32 @@ function submitExam(body) {
   ) {
 
     const answer =
-      answers[i];
+      answers[i] || {};
 
+
+    /*
+     * Accept both:
+     *
+     * {
+     *   questionId: "PY009",
+     *   selectedAnswer: 0
+     * }
+     *
+     * OR
+     *
+     * {
+     *   questionId: "PY009",
+     *   selectedAnswer: "A"
+     * }
+     */
 
     const questionId =
       String(
-        answer.questionId || ""
+        answer.questionId ||
+        answer.id ||
+        ""
       ).trim();
 
-
-    const selectedAnswer =
-      normalizeAnswer(
-        answer.selectedAnswer
-      );
-
-
-    // Invalid question
 
     if (
       !questionId ||
@@ -965,11 +855,9 @@ function submitExam(body) {
     }
 
 
-    // Duplicate question
+    // Prevent duplicate question submissions
 
-    if (
-      seen[questionId]
-    ) {
+    if (seen[questionId]) {
 
       return {
 
@@ -986,13 +874,17 @@ function submitExam(body) {
     seen[questionId] = true;
 
 
-    // Invalid option
+    // Convert selected answer to A/B/C/D
+
+    const selectedAnswer =
+      normalizeAnswer(
+        answer.selectedAnswer
+      );
+
 
     if (
       !["A", "B", "C", "D"]
-        .includes(
-          selectedAnswer
-        )
+        .includes(selectedAnswer)
     ) {
 
       return {
@@ -1007,13 +899,11 @@ function submitExam(body) {
     }
 
 
-    // SERVER-SIDE ANSWER CHECK
+    // Read correct answer ONLY from Google Sheet
 
     const correctAnswer =
       normalizeAnswer(
-        questionMap[
-          questionId
-        ].Correct_Answer
+        questionMap[questionId].Correct_Answer
       );
 
 
@@ -1030,50 +920,20 @@ function submitExam(body) {
 
 
   // --------------------------------------------------------
-  // TOTAL QUESTIONS
-  // --------------------------------------------------------
-
-  const settings =
-    getSettings();
-
-
-  const totalQuestions =
-    Number(
-      settings.Total_Questions ||
-      settings.totalQuestions ||
-      CONFIG.DEFAULTS.TOTAL_QUESTIONS
-    );
-
-
-  if (
-    answers.length >
-    totalQuestions
-  ) {
-
-    return {
-
-      success: false,
-
-      error:
-        "Invalid question count."
-
-    };
-
-  }
-
-
-  // --------------------------------------------------------
-  // SCORE
+  // IMPORTANT:
+  // SCORE IS CALCULATED ONCE HERE
   // --------------------------------------------------------
 
   const scorePercentage =
-    Math.round(
-      (
-        correct /
-        totalQuestions
-      ) *
-      10000
-    ) / 100;
+    totalQuestions > 0
+      ? Math.round(
+          (
+            correct /
+            totalQuestions
+          ) *
+          10000
+        ) / 100
+      : 0;
 
 
   const wrong =
@@ -1119,7 +979,7 @@ function submitExam(body) {
 
 
   // --------------------------------------------------------
-  // SERVER CALCULATES WARNINGS
+  // TOTAL WARNINGS
   // --------------------------------------------------------
 
   const warnings =
@@ -1150,15 +1010,16 @@ function submitExam(body) {
     );
 
 
+  // --------------------------------------------------------
+  // RESULT
+  // --------------------------------------------------------
+
   let result;
 
 
-  if (
-    disqualified
-  ) {
+  if (disqualified) {
 
-    result =
-      "DISQUALIFIED";
+    result = "DISQUALIFIED";
 
   }
 
@@ -1167,15 +1028,13 @@ function submitExam(body) {
     passingScore
   ) {
 
-    result =
-      "PASS";
+    result = "PASS";
 
   }
 
   else {
 
-    result =
-      "FAIL";
+    result = "FAIL";
 
   }
 
@@ -1321,7 +1180,6 @@ function submitExam(body) {
 
 function generateCertificate(params) {
 
-
   const certSheet =
     getSheet(
       CONFIG.SHEETS.CERTIFICATES
@@ -1329,7 +1187,7 @@ function generateCertificate(params) {
 
 
   // --------------------------------------------------------
-  // DUPLICATE CERTIFICATE CHECK
+  // DUPLICATE CERTIFICATE
   // --------------------------------------------------------
 
   const existing =
@@ -1339,9 +1197,7 @@ function generateCertificate(params) {
     );
 
 
-  if (
-    existing
-  ) {
+  if (existing) {
 
     return {
 
@@ -1359,10 +1215,6 @@ function generateCertificate(params) {
 
   }
 
-
-  // --------------------------------------------------------
-  // CERTIFICATE ID
-  // --------------------------------------------------------
 
   const certificateId =
     generateId("CERT");
@@ -1385,10 +1237,8 @@ function generateCertificate(params) {
 
 
   const formattedScore =
-    Number(
-      params.score
-    ).toFixed(2) +
-    "%";
+    Number(params.score)
+      .toFixed(2) + "%";
 
 
   // --------------------------------------------------------
@@ -1413,9 +1263,7 @@ function generateCertificate(params) {
     template.makeCopy(
 
       "Certificate - " +
-      sanitizeFileName(
-        params.name
-      ) +
+      sanitizeFileName(params.name) +
       " - " +
       certificateId,
 
@@ -1435,42 +1283,37 @@ function generateCertificate(params) {
 
 
   // --------------------------------------------------------
-  // EXACT EXISTING PLACEHOLDERS
+  // PLACEHOLDERS
   // --------------------------------------------------------
 
-  presentation
-    .replaceAllText(
-      "{{NAME}}",
-      String(params.name)
-    );
+  presentation.replaceAllText(
+    "{{NAME}}",
+    String(params.name)
+  );
 
 
-  presentation
-    .replaceAllText(
-      "{{SKILL}}",
-      String(params.skill)
-    );
+  presentation.replaceAllText(
+    "{{SKILL}}",
+    String(params.skill)
+  );
 
 
-  presentation
-    .replaceAllText(
-      "{{SCORE}}",
-      formattedScore
-    );
+  presentation.replaceAllText(
+    "{{SCORE}}",
+    formattedScore
+  );
 
 
-  presentation
-    .replaceAllText(
-      "{{CERTIFICATE_ID}}",
-      certificateId
-    );
+  presentation.replaceAllText(
+    "{{CERTIFICATE_ID}}",
+    certificateId
+  );
 
 
-  presentation
-    .replaceAllText(
-      "{{DATE}}",
-      formattedDate
-    );
+  presentation.replaceAllText(
+    "{{DATE}}",
+    formattedDate
+  );
 
 
   presentation.saveAndClose();
@@ -1485,12 +1328,8 @@ function generateCertificate(params) {
 
   const pdfBlob =
     DriveApp
-      .getFileById(
-        copied.getId()
-      )
-      .getAs(
-        MimeType.PDF
-      );
+      .getFileById(copied.getId())
+      .getAs(MimeType.PDF);
 
 
   pdfBlob.setName(
@@ -1498,9 +1337,7 @@ function generateCertificate(params) {
     "Certificate_" +
     certificateId +
     "_" +
-    sanitizeFileName(
-      params.name
-    ) +
+    sanitizeFileName(params.name) +
     ".pdf"
 
   );
@@ -1542,12 +1379,10 @@ function generateCertificate(params) {
 
 
   // --------------------------------------------------------
-  // REMOVE TEMP SLIDES FILE
+  // DELETE TEMP SLIDES COPY
   // --------------------------------------------------------
 
-  copied.setTrashed(
-    true
-  );
+  copied.setTrashed(true);
 
 
   // --------------------------------------------------------
@@ -1558,8 +1393,7 @@ function generateCertificate(params) {
     "DISABLED_IN_SETTINGS";
 
 
-  let emailSentDate =
-    "";
+  let emailSentDate = "";
 
 
   const settings =
@@ -1578,9 +1412,7 @@ function generateCertificate(params) {
     "ENABLED";
 
 
-  if (
-    emailEnabled
-  ) {
+  if (emailEnabled) {
 
     try {
 
@@ -1601,24 +1433,17 @@ function generateCertificate(params) {
       );
 
 
-      emailStatus =
-        "SENT";
+      emailStatus = "SENT";
 
-
-      emailSentDate =
-        new Date();
+      emailSentDate = new Date();
 
     }
 
     catch (emailError) {
 
-      emailStatus =
-        "FAILED";
+      emailStatus = "FAILED";
 
-
-      emailSentDate =
-        new Date();
-
+      emailSentDate = new Date();
 
       console.error(
         emailError
@@ -1686,21 +1511,13 @@ function generateCertificate(params) {
 // ==========================================================
 
 function sendCertificateEmail(
-
   recipientEmail,
-
   name,
-
   skill,
-
   score,
-
   certificateId,
-
   pdfBlob
-
 ) {
-
 
   const subject =
     "Congratulations! Your ASSISTLANA Skills Certificate";
@@ -1709,48 +1526,36 @@ function sendCertificateEmail(
   const htmlBody =
 
     "<div style='font-family:Arial,sans-serif;" +
-
     "max-width:600px;margin:auto;padding:30px;" +
-
     "border:1px solid #ddd;border-radius:12px;'>" +
 
-
     "<h2>🎓 Congratulations!</h2>" +
-
 
     "<p>Dear <strong>" +
     escapeHtml(name) +
     "</strong>,</p>" +
 
-
     "<p>You have successfully completed the " +
     "<strong>" +
     escapeHtml(skill) +
-    "</strong> " +
-    "skill assessment.</p>" +
-
+    "</strong> skill assessment.</p>" +
 
     "<p><strong>Skill:</strong> " +
     escapeHtml(skill) +
     "</p>" +
 
-
     "<p><strong>Score:</strong> " +
     escapeHtml(score) +
     "</p>" +
-
 
     "<p><strong>Certificate ID:</strong> " +
     escapeHtml(certificateId) +
     "</p>" +
 
-
     "<p>Your digital certificate is attached to this email.</p>" +
-
 
     "<p>Best Regards,<br>" +
     "<strong>ASSISTLANA Skills Team</strong></p>" +
-
 
     "</div>";
 
@@ -1780,7 +1585,6 @@ function sendCertificateEmail(
 // ==========================================================
 
 function getSettings() {
-
 
   const sheet =
     getSheet(
@@ -1829,9 +1633,7 @@ function getSettings() {
       ).trim();
 
 
-    if (
-      key
-    ) {
+    if (key) {
 
       settings[key] =
         rows[i][1];
@@ -1854,7 +1656,6 @@ function setupSheets() {
 
   ensureSheetsAndHeaders();
 
-
   Logger.log(
     "ASSISTLANA Skills sheets and headers are ready."
   );
@@ -1868,7 +1669,6 @@ function setupSheets() {
 
 function ensureSheetsAndHeaders() {
 
-
   const ss =
     SpreadsheetApp.openById(
       CONFIG.SPREADSHEET_ID
@@ -1877,58 +1677,49 @@ function ensureSheetsAndHeaders() {
 
   Object.keys(
     HEADERS
-  ).forEach(
-    function(sheetName) {
+  ).forEach(function(sheetName) {
+
+    let sheet =
+      ss.getSheetByName(
+        sheetName
+      );
 
 
-      let sheet =
-        ss.getSheetByName(
+    if (!sheet) {
+
+      sheet =
+        ss.insertSheet(
           sheetName
         );
 
-
-      if (!sheet) {
-
-        sheet =
-          ss.insertSheet(
-            sheetName
-          );
-
-      }
+    }
 
 
-      const headers =
-        HEADERS[sheetName];
+    const headers =
+      HEADERS[sheetName];
 
 
-      // Only write headers if sheet is empty.
-      // This prevents accidental overwriting
-      // of existing data.
+    if (
+      sheet.getLastRow() === 0
+    ) {
 
-      if (
-        sheet.getLastRow() === 0
-      ) {
-
-        sheet
-          .getRange(
-            1,
-            1,
-            1,
-            headers.length
-          )
-          .setValues(
-            [headers]
-          );
-
-      }
-
-
-      sheet.setFrozenRows(
-        1
-      );
+      sheet
+        .getRange(
+          1,
+          1,
+          1,
+          headers.length
+        )
+        .setValues([
+          headers
+        ]);
 
     }
-  );
+
+
+    sheet.setFrozenRows(1);
+
+  });
 
 
   // --------------------------------------------------------
@@ -1995,11 +1786,10 @@ function ensureSheetsAndHeaders() {
 
 
 // ==========================================================
-// READ SHEET ROWS AS OBJECTS
+// READ SHEET ROWS
 // ==========================================================
 
 function readRows(sheetName) {
-
 
   const sheet =
     getSheet(sheetName);
@@ -2023,41 +1813,33 @@ function readRows(sheetName) {
   const headers =
     values
       .shift()
-      .map(
-        function(header) {
+      .map(function(header) {
 
-          return String(
-            header
-          ).trim();
+        return String(
+          header
+        ).trim();
 
-        }
-      );
+      });
 
 
-  return values.map(
+  return values.map(function(row) {
 
-    function(row) {
-
-      const object = {};
+    const object = {};
 
 
-      headers.forEach(
+    headers.forEach(
+      function(header, index) {
 
-        function(header, index) {
+        object[header] =
+          row[index];
 
-          object[header] =
-            row[index];
-
-        }
-
-      );
+      }
+    );
 
 
-      return object;
+    return object;
 
-    }
-
-  );
+  });
 
 }
 
@@ -2067,20 +1849,13 @@ function readRows(sheetName) {
 // ==========================================================
 
 function findRow(
-
   sheetName,
-
   key,
-
   value
-
 ) {
 
-
   const rows =
-    readRows(
-      sheetName
-    );
+    readRows(sheetName);
 
 
   const target =
@@ -2088,18 +1863,14 @@ function findRow(
 
 
   return rows.find(
-
     function(row) {
 
       return (
-        normalize(
-          row[key]
-        ) ===
+        normalize(row[key]) ===
         target
       );
 
     }
-
   ) || null;
 
 }
@@ -2110,13 +1881,9 @@ function findRow(
 // ==========================================================
 
 function findCertificate(
-
   registrationId,
-
   skill
-
 ) {
-
 
   const rows =
     readRows(
@@ -2125,7 +1892,6 @@ function findCertificate(
 
 
   return rows.find(
-
     function(row) {
 
       return (
@@ -2142,14 +1908,11 @@ function findCertificate(
         normalize(
           row.Skill
         ) ===
-        normalize(
-          skill
-        )
+        normalize(skill)
 
       );
 
     }
-
   ) || null;
 
 }
@@ -2160,7 +1923,6 @@ function findCertificate(
 // ==========================================================
 
 function getSheet(sheetName) {
-
 
   const ss =
     SpreadsheetApp.openById(
@@ -2195,28 +1957,19 @@ function getSheet(sheetName) {
 
 function isActive(value) {
 
-
   const normalized =
     normalize(value);
 
 
   return (
 
-    value === true
+    value === true ||
 
-    ||
+    normalized === "true" ||
 
-    normalized === "true"
+    normalized === "yes" ||
 
-    ||
-
-    normalized === "yes"
-
-    ||
-
-    normalized === "1"
-
-    ||
+    normalized === "1" ||
 
     normalized === "active"
 
@@ -2231,16 +1984,55 @@ function isActive(value) {
 
 function normalizeAnswer(value) {
 
+  if (
+    value === null ||
+    value === undefined
+  ) {
 
-  return String(
-    value || ""
-  )
-    .trim()
-    .toUpperCase()
+    return "";
+
+  }
+
+
+  const raw =
+    String(value)
+      .trim()
+      .toUpperCase();
+
+
+  /*
+   * Frontend index:
+   *
+   * 0 = A
+   * 1 = B
+   * 2 = C
+   * 3 = D
+   */
+
+  if (raw === "0") return "A";
+  if (raw === "1") return "B";
+  if (raw === "2") return "C";
+  if (raw === "3") return "D";
+
+
+  /*
+   * Accept:
+   * A
+   * B
+   * C
+   * D
+   *
+   * Also:
+   * OPTION A
+   * OPTION_A
+   */
+
+  return raw
     .replace(
       /^OPTION[_ -]?/,
       ""
-    );
+    )
+    .trim();
 
 }
 
@@ -2250,7 +2042,6 @@ function normalizeAnswer(value) {
 // ==========================================================
 
 function normalize(value) {
-
 
   return String(
     value || ""
@@ -2266,7 +2057,6 @@ function normalize(value) {
 // ==========================================================
 
 function safeCount(value) {
-
 
   const count =
     Number(value);
@@ -2295,7 +2085,6 @@ function safeCount(value) {
 
 function isValidEmail(email) {
 
-
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     .test(
       String(email || "").trim()
@@ -2310,7 +2099,6 @@ function isValidEmail(email) {
 
 function generateId(prefix) {
 
-
   const date =
     Utilities.formatDate(
 
@@ -2324,7 +2112,8 @@ function generateId(prefix) {
 
 
   const random =
-    Utilities.getUuid()
+    Utilities
+      .getUuid()
       .replace(
         /-/g,
         ""
@@ -2352,7 +2141,6 @@ function generateId(prefix) {
 // ==========================================================
 
 function getOrCreateCertificateFolder() {
-
 
   const folders =
     DriveApp.getFoldersByName(
@@ -2382,7 +2170,6 @@ function getOrCreateCertificateFolder() {
 
 function sanitizeFileName(name) {
 
-
   return String(name)
 
     .replace(
@@ -2405,7 +2192,6 @@ function sanitizeFileName(name) {
 // ==========================================================
 
 function escapeHtml(text) {
-
 
   return String(text)
 
@@ -2443,7 +2229,6 @@ function escapeHtml(text) {
 
 function jsonResponse(data) {
 
-
   return ContentService
 
     .createTextOutput(
@@ -2478,6 +2263,28 @@ function testSetup() {
 
 function testQuestions() {
 
+  const result =
+    getPublicQuestions(
+      "Python Fundamentals"
+    );
+
+
+  Logger.log(
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+}
+
+
+// ==========================================================
+// TEST PYTHON QUESTIONS
+// ==========================================================
+
+function testPythonQuestions() {
 
   const result =
     getPublicQuestions(
@@ -2487,8 +2294,73 @@ function testQuestions() {
 
   Logger.log(
     JSON.stringify(
-      result
+      result,
+      null,
+      2
     )
+  );
+
+
+  /*
+   * Expected structure:
+   *
+   * {
+   *   success: true,
+   *   data: [
+   *     {
+   *       id: "PY009",
+   *       q: "What is the result of 10 // 3?",
+   *       a: ["3","3.33","1","4"]
+   *     },
+   *     {
+   *       id: "PY010",
+   *       q: "What is the result of 2 ** 3?",
+   *       a: ["5","6","8","9"]
+   *     }
+   *   ]
+   *
+   * Correct answers are intentionally NOT returned.
+   */
+
+}
+
+
+// ==========================================================
+// TEST ANSWER NORMALIZATION
+// ==========================================================
+
+function testAnswerNormalization() {
+
+  Logger.log(
+    "0 -> " + normalizeAnswer(0)
+  );
+
+  Logger.log(
+    "1 -> " + normalizeAnswer(1)
+  );
+
+  Logger.log(
+    "2 -> " + normalizeAnswer(2)
+  );
+
+  Logger.log(
+    "3 -> " + normalizeAnswer(3)
+  );
+
+  Logger.log(
+    "A -> " + normalizeAnswer("A")
+  );
+
+  Logger.log(
+    "B -> " + normalizeAnswer("B")
+  );
+
+  Logger.log(
+    "C -> " + normalizeAnswer("C")
+  );
+
+  Logger.log(
+    "D -> " + normalizeAnswer("D")
   );
 
 }
@@ -2499,7 +2371,6 @@ function testQuestions() {
 // ==========================================================
 
 function testRegistration() {
-
 
   const testData = {
 
@@ -2553,7 +2424,9 @@ function testRegistration() {
 
   Logger.log(
     JSON.stringify(
-      result
+      result,
+      null,
+      2
     )
   );
 
