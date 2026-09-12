@@ -51,6 +51,7 @@ export default function SkillsExperience({ skill }) {
   const audioContextRef = useRef(null);
   const audioAnalyserRef = useRef(null);
   const examSubmittedRef = useRef(false);
+  const submitExamRef = useRef(null);
 
   const visibleLessons = showAllLessons ? skill.lessons : skill.lessons.slice(0, 6);
   const currentQuestion = questions[questionIndex];
@@ -72,6 +73,14 @@ export default function SkillsExperience({ skill }) {
     if (videoRef.current) videoRef.current.srcObject = null;
   };
 
+  const registerWarning = field => {
+    setSignals(current => {
+      const next = { ...current, [field]: current[field] + 1, warnings: current.warnings + 1 };
+      if (next.warnings >= 3) setError("The assessment has reached the maximum warning limit and will be submitted for review.");
+      return next;
+    });
+  };
+
   const issueSignalWarning = signal => {
     const now = Date.now();
     if (now - lastWarningRef.current[signal] < WARNING_COOLDOWN_MS) return;
@@ -79,7 +88,7 @@ export default function SkillsExperience({ skill }) {
     registerWarning(signal);
   };
 
-  const monitorFrame = () => {
+  const monitorFrame = timestamp => {
     const video = videoRef.current;
     const detector = detectorRef.current;
     if (!video) {
@@ -88,7 +97,7 @@ export default function SkillsExperience({ skill }) {
     }
 
     if (detector && video.readyState >= 2) {
-      const result = detector.detectForVideo(video, performance.now());
+      const result = detector.detectForVideo(video, timestamp);
       const faceCount = result.detections?.length || 0;
       if (faceCount === 0) {
         faceFrameRef.current.absent += 1;
@@ -164,7 +173,7 @@ export default function SkillsExperience({ skill }) {
   useEffect(() => {
     if (stage !== "exam") return undefined;
     const timer = window.setInterval(() => setTimeLeft(value => {
-      if (value <= 1) { window.clearInterval(timer); submitExam(); return 0; }
+      if (value <= 1) { window.clearInterval(timer); submitExamRef.current?.(); return 0; }
       return value - 1;
     }), 1000);
     const onVisibility = () => { if (document.hidden) registerWarning("tabSwitchCount"); };
@@ -175,8 +184,8 @@ export default function SkillsExperience({ skill }) {
   }, [stage]);
 
   useEffect(() => {
-    if (stage === "exam" && signals.warnings >= 3 && !loading) submitExam();
-  }, [signals.warnings, stage]);
+    if (stage === "exam" && signals.warnings >= 3 && !loading) submitExamRef.current?.();
+  }, [signals.warnings, stage, loading]);
 
   useEffect(() => () => stopLocalMonitoring(), []);
 
@@ -208,14 +217,6 @@ export default function SkillsExperience({ skill }) {
   const updateForm = event => {
     const { name, value, type, checked } = event.target;
     setForm(current => ({ ...current, [name]: type === "checkbox" ? checked : value }));
-  };
-
-  const registerWarning = field => {
-    setSignals(current => {
-      const next = { ...current, [field]: current[field] + 1, warnings: current.warnings + 1 };
-      if (next.warnings >= 3) setError("The assessment has reached the maximum warning limit and will be submitted for review.");
-      return next;
-    });
   };
 
   const beginRegistration = () => { setError(""); setStage("registration"); window.location.hash = "assessment"; };
@@ -355,6 +356,10 @@ export default function SkillsExperience({ skill }) {
     } catch { examSubmittedRef.current = false; setError("Unable to connect to the certification server. Please try again."); }
     finally { setLoading(false); }
   }
+
+  useEffect(() => {
+    submitExamRef.current = submitExam;
+  });
 
   const minutes = String(Math.floor(timeLeft / 60)).padStart(2, "0");
   const seconds = String(timeLeft % 60).padStart(2, "0");

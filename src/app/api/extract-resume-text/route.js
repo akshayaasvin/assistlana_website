@@ -40,9 +40,11 @@ export async function POST(request) {
 
         // Method 2: pdf-parse fallback
         try {
-          const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
-          const result   = await pdfParse(buffer);
-          extractedText  = result.text || "";
+          const { PDFParse } = await import("pdf-parse");
+          const parser       = new PDFParse({ data: buffer });
+          const result       = await parser.getText();
+          extractedText      = result.text || "";
+          await parser.destroy();
         } catch (parseErr) {
           console.error("pdf-parse error:", parseErr.message);
           // Return empty so upload page falls back to base64 Gemini path
