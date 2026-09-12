@@ -51,6 +51,7 @@ export default function SkillsExperience({ skill }) {
   const audioContextRef = useRef(null);
   const audioAnalyserRef = useRef(null);
   const examSubmittedRef = useRef(false);
+  const startExamInFlightRef = useRef(false);
   const submitExamRef = useRef(null);
 
   const visibleLessons = showAllLessons ? skill.lessons : skill.lessons.slice(0, 6);
@@ -235,6 +236,8 @@ export default function SkillsExperience({ skill }) {
   };
 
   const startExam = async () => {
+    if (startExamInFlightRef.current || stage !== "instructions") return;
+    startExamInFlightRef.current = true;
     setError(""); setLoading(true);
     const requestedSkill = String(skill.name).trim();
     const logStartFailure = (phase, reason) => {
@@ -256,13 +259,20 @@ export default function SkillsExperience({ skill }) {
         throw new Error(data.error || `The question service returned HTTP ${response.status}.`);
       }
       const questionRows = Array.isArray(data.questions) ? data.questions : Array.isArray(data.data) ? data.data : [];
-      const received = questionRows.filter(question => String(question.skill || "").trim() === requestedSkill).map(question => ({
-        questionId: question.questionId || question.question_id || question.Question_ID || question.id,
-        skill: requestedSkill,
-        question: question.question || question.Question,
-        difficulty: question.difficulty || question.Difficulty,
-        options: Array.isArray(question.options) ? question.options : question.options ? Object.values(question.options) : [question.optionA || question.Option_A, question.optionB || question.Option_B, question.optionC || question.Option_C, question.optionD || question.Option_D].filter(Boolean),
-      }));
+      const received = questionRows.filter(question => String(question.skill || "").trim() === requestedSkill).map(question => {
+        const rawOptions = Array.isArray(question.options)
+          ? question.options
+          : question.options
+            ? [question.options.A, question.options.B, question.options.C, question.options.D]
+            : [question.optionA || question.Option_A, question.optionB || question.Option_B, question.optionC || question.Option_C, question.optionD || question.Option_D];
+        return {
+          questionId: question.questionId || question.question_id || question.Question_ID || question.id,
+          skill: requestedSkill,
+          question: question.question || question.Question,
+          difficulty: question.difficulty || question.Difficulty,
+          options: rawOptions.filter(option => typeof option === "string" && option.trim()),
+        };
+      });
       if (received.length < 30) throw new Error("not-enough");
       shuffled = [...received].sort(() => Math.random() - 0.5).slice(0, 30);
       setQuestions(shuffled);
@@ -271,6 +281,7 @@ export default function SkillsExperience({ skill }) {
     } catch (reason) {
       logStartFailure("question loading", reason);
       setError(reason.message === "not-enough" ? `Not enough questions are currently available for ${requestedSkill}.` : reason.message || "Questions could not be loaded for this skill.");
+      startExamInFlightRef.current = false;
       setLoading(false);
       return;
     }
@@ -299,6 +310,7 @@ export default function SkillsExperience({ skill }) {
     } catch (reason) {
       setError(mediaErrorMessage("camera", reason));
       stopLocalMonitoring();
+      startExamInFlightRef.current = false;
       setLoading(false);
       return;
     }
@@ -309,6 +321,7 @@ export default function SkillsExperience({ skill }) {
       setMediaDiagnostics(current => ({ ...current, microphone: "available", microphonePermission: "granted" }));
     } catch (reason) {
       setError(mediaErrorMessage("microphone", reason));
+      startExamInFlightRef.current = false;
       setLoading(false);
       return;
     }
@@ -320,26 +333,31 @@ export default function SkillsExperience({ skill }) {
     mediaStreamRef.current = stream;
     const startedAt = new Date().toISOString();
     const nextExamId = globalThis.crypto?.randomUUID?.() || `ASSISTLANA-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    let fullscreenNotice = "";
     try {
-      if (!document.documentElement.requestFullscreen) throw new Error("fullscreen-unavailable");
-      await document.documentElement.requestFullscreen();
+      const fullscreenTarget = document.documentElement;
+      const requestFullscreen = fullscreenTarget.requestFullscreen || fullscreenTarget.webkitRequestFullscreen;
+      if (!requestFullscreen) throw new Error("fullscreen-unavailable");
+      await requestFullscreen.call(fullscreenTarget);
     } catch (reason) {
-      stream.getTracks().forEach(track => track.stop());
       logStartFailure("fullscreen request", reason);
-      setError("Fullscreen mode is required to start the proctored exam.");
-      setLoading(false);
-      return;
+      fullscreenNotice = "Fullscreen mode is unavailable on this browser. The exam will continue in the current window.";
     }
 
     setExamStart(startedAt);
     setExamId(nextExamId);
     setTimeLeft(1800);
     setSignals(initialSignals);
-    setMonitoringStatus("Starting local monitoring...");
+    setMonitoringStatus(fullscreenNotice || "Starting local monitoring...");
+    if (fullscreenNotice) setError(fullscreenNotice);
     setStage("exam");
     examSubmittedRef.current = false;
-    await startLocalMonitoring(stream);
-    setLoading(false);
+    try {
+      await startLocalMonitoring(stream);
+    } finally {
+      startExamInFlightRef.current = false;
+      setLoading(false);
+    }
   };
 
   async function submitExam() {
@@ -383,7 +401,7 @@ export default function SkillsExperience({ skill }) {
 
       {stage === "instructions" && <div className="mt-7"><div className="grid gap-4 sm:grid-cols-3">{[[Clock3, "30 minutes"], [FileBadge, "30 questions"], [ShieldCheck, "75% to pass"]].map(([Icon, text]) => <div key={text} className="border border-slate-200 bg-white p-4 text-center"><Icon className="mx-auto text-blue-700" size={22} /><p className="mt-3 text-sm font-bold">{text}</p></div>)}</div><div className="mt-6 border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-900"><strong>Browser-based monitoring:</strong> the assessment may use camera and microphone permission, fullscreen status, tab visibility, face presence, multiple-face signals, and basic audio activity. These signals are not perfectly accurate. No camera or microphone recordings are stored by this exam interface.</div><p className="mt-5 text-sm leading-7 text-slate-600">You will receive warnings for relevant events. Three warnings can disqualify the attempt. Keep this assessment window visible and answer independently.</p><div className="mt-5 grid gap-2 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 sm:grid-cols-2"><span>Camera: <strong>{mediaDiagnostics.camera}</strong></span><span>Microphone: <strong>{mediaDiagnostics.microphone}</strong></span><span>Camera permission: <strong>{mediaDiagnostics.cameraPermission}</strong></span><span>Microphone permission: <strong>{mediaDiagnostics.microphonePermission}</strong></span></div><button onClick={startExam} disabled={loading} className="mt-7 w-full rounded-xl bg-blue-700 px-5 py-3.5 text-sm font-bold text-white disabled:opacity-50">{loading ? "Loading questions..." : "Request permissions and start"}</button></div>}
 
-      {stage === "exam" && currentQuestion && <div className="mt-7"><div className="flex flex-wrap items-center justify-between gap-3 text-sm font-bold"><span>Question {questionIndex + 1} of {questions.length}</span><span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-blue-700"><Clock3 size={15} /> {minutes}:{seconds}</span></div><div className="mt-4 h-2 bg-slate-200"><div className="h-full bg-blue-600 transition-all" style={{ width: `${((questionIndex + 1) / questions.length) * 100}%` }} /></div><div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600"><span>{monitoringStatus}</span><span className="font-bold text-amber-700">Warning {Math.min(signals.warnings, 3)} of 3</span></div><video ref={videoRef} autoPlay muted playsInline className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden="true" /><div className="mt-8 border border-slate-200 bg-white p-6"><p className="text-lg font-extrabold leading-8">{currentQuestion.question}</p><div className="mt-6 space-y-3">{currentQuestion.options.map((option, index) => { const optionKey = String.fromCharCode(65 + index); const questionKey = currentQuestion.questionId || currentQuestion.id; return <label key={option} className={`flex cursor-pointer gap-3 border p-4 text-sm ${answers[questionKey] === optionKey ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300"}`}><input type="radio" name={`question-${questionIndex}`} checked={answers[questionKey] === optionKey} onChange={() => setAnswers(current => ({ ...current, [questionKey]: optionKey }))} />{option}</label>; })}</div></div><div className="mt-6 flex justify-between gap-3"><button disabled={questionIndex === 0} onClick={() => setQuestionIndex(value => value - 1)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold disabled:opacity-40">Previous</button>{questionIndex === questions.length - 1 ? <button onClick={submitExam} disabled={loading} className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? "Submitting..." : "Submit assessment"}</button> : <button onClick={() => setQuestionIndex(value => value + 1)} className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white">Next</button>}</div><p className="mt-5 text-xs text-slate-500">Tab switches: {signals.tabSwitchCount}. Fullscreen exits: {signals.fullscreenExitCount}. Face absence: {signals.faceAbsentCount}. Multiple faces: {signals.multipleFaceCount}. Audio warnings: {signals.audioWarningCount}.</p></div>}
+      {stage === "exam" && currentQuestion && <div className="mt-7"><div className="flex flex-wrap items-center justify-between gap-3 text-sm font-bold"><span>Question {questionIndex + 1} of {questions.length}</span><span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-blue-700"><Clock3 size={15} /> {minutes}:{seconds}</span></div><div className="mt-4 h-2 bg-slate-200"><div className="h-full bg-blue-600 transition-all" style={{ width: `${((questionIndex + 1) / questions.length) * 100}%` }} /></div><div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600"><span>{monitoringStatus}</span><span className="font-bold text-amber-700">Warning {Math.min(signals.warnings, 3)} of 3</span></div><video ref={videoRef} autoPlay muted playsInline className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden="true" /><div className="mt-8 border border-slate-200 bg-white p-6"><p className="text-lg font-extrabold leading-8">{currentQuestion.question}</p><div className="mt-6 space-y-3">{currentQuestion.options.map((option, index) => { const optionKey = String.fromCharCode(65 + index); const questionKey = currentQuestion.questionId || currentQuestion.id; return <label key={`${questionKey}-${optionKey}`} className={`flex cursor-pointer gap-3 border p-4 text-sm ${answers[questionKey] === optionKey ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300"}`}><input type="radio" name={`question-${questionKey}`} checked={answers[questionKey] === optionKey} onChange={() => setAnswers(current => ({ ...current, [questionKey]: optionKey }))} />{option}</label>; })}</div></div><div className="mt-6 flex justify-between gap-3"><button disabled={questionIndex === 0} onClick={() => setQuestionIndex(value => value - 1)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold disabled:opacity-40">Previous</button>{questionIndex === questions.length - 1 ? <button onClick={submitExam} disabled={loading} className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? "Submitting..." : "Submit assessment"}</button> : <button onClick={() => setQuestionIndex(value => value + 1)} className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white">Next</button>}</div><p className="mt-5 text-xs text-slate-500">Tab switches: {signals.tabSwitchCount}. Fullscreen exits: {signals.fullscreenExitCount}. Face absence: {signals.faceAbsentCount}. Multiple faces: {signals.multipleFaceCount}. Audio warnings: {signals.audioWarningCount}.</p></div>}
 
       {stage === "result" && <div className="mt-7">{result?.disqualified || result?.status === "DISQUALIFIED" ? <Status>Your assessment has been disqualified according to the assessment rules.</Status> : result?.passed || result?.status === "PASS" ? <div className="rounded-xl bg-emerald-50 p-6 text-emerald-900"><CheckCircle2 size={28} /><h3 className="mt-4 text-2xl font-black">Congratulations, you passed.</h3><p className="mt-2">{skill.name} · Score: <strong>{result.scorePercentage ?? result.score ?? "Recorded"}%</strong></p>{certificate && <div className="mt-5 border border-emerald-200 bg-white p-4 text-sm"><strong>Certificate generated successfully</strong><p className="mt-2">Certificate ID: {certificate.certificateId || certificate.id || "Provided by backend"}</p>{certificate.certificateUrl && <a className="mt-3 inline-flex items-center gap-2 font-bold text-blue-700" href={certificate.certificateUrl} target="_blank" rel="noreferrer">View certificate <ExternalLink size={14} /></a>}<p className="mt-3 text-slate-600">Your certificate has been sent to your registered email address.</p></div>}</div> : <div className="rounded-xl bg-amber-50 p-6 text-amber-900"><h3 className="text-2xl font-black">Thank you for completing the assessment.</h3><p className="mt-3">Your score: <strong>{result?.scorePercentage ?? result?.score ?? "Recorded"}%</strong></p><p className="mt-2">Passing score: 75%. Result: Not passed.</p></div>}</div>}
     </div></section>}
