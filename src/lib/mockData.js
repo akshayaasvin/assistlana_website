@@ -1,6 +1,6 @@
 // ─── ADMIN CREDENTIALS ───────────────────────────
 export const ADMIN_USERS = [
-  { userId:"admin001", password:"Admin@123", name:"Preethi Menon", role:"Super Admin", uid:"dd0b11eb-76c6-4afd-94b4-0d0845c85b5c" },
+  { userId:"admin001", password:"Admin@123", name:"Preethi Menon", role:"Super Admin", uid:"67f399fc-0ce3-4589-b1b4-ef7de2541cda" },
   { userId:"admin002", password:"Admin@456", name:"Sanjay Kumar",  role:"Org Admin",   uid:"" },
 ];
 

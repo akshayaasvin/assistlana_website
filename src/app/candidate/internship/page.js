@@ -14,7 +14,8 @@ const YEARS = ["1st Year","2nd Year","3rd Year","4th Year","Final Year","PG","Fr
 export default function CandidateInternship() {
   const router = useRouter();
   const [user,       setUser]       = useState(null);
-  const [pastApp,    setPastApp]    = useState(null);
+  // Candidate records are deliberately not read in the browser; RLS reserves them for admins.
+  const pastApp = null;
   const [file,       setFile]       = useState(null);
   const [loading,    setLoading]    = useState(false);
   const [success,    setSuccess]    = useState(false);
@@ -25,15 +26,16 @@ export default function CandidateInternship() {
   });
 
   useEffect(() => {
-    const stored = localStorage.getItem("candidate_user");
-    if (!stored) { router.push("/"); return; }
-    const u = JSON.parse(stored);
-    setUser(u);
-    setForm(p => ({ ...p, name: u.name || "", email: u.email || "" }));
-
-    supabase.from("internship_applications").select("*").eq("email", u.email).maybeSingle()
-      .then(({ data }) => { if (data) setPastApp(data); });
-  }, []);
+    const loadCandidate = async () => {
+      await Promise.resolve();
+      const stored = localStorage.getItem("candidate_user");
+      if (!stored) { router.push("/"); return; }
+      const u = JSON.parse(stored);
+      setUser(u);
+      setForm(p => ({ ...p, name: u.name || "", email: u.email || "" }));
+    };
+    loadCandidate();
+  }, [router]);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -46,15 +48,16 @@ export default function CandidateInternship() {
     setLoading(true);
     let resume_url = "";
     if (file) {
-      const fname = `${Date.now()}_${file.name.replace(/\s/g,"_")}`;
+      if (file.type !== "application/pdf") { setError("Please upload a PDF resume."); setLoading(false); return; }
+      if (file.size > 5 * 1024 * 1024) { setError("File too large (max 5MB)."); setLoading(false); return; }
+      const fname = `${crypto.randomUUID()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
       const { error: upErr } = await supabase.storage.from("internship-resumes").upload(fname, file, { contentType: file.type });
-      if (!upErr) {
-        const { data } = supabase.storage.from("internship-resumes").getPublicUrl(fname);
-        resume_url = data.publicUrl;
-      }
+      if (upErr) { setError("Resume upload failed: " + upErr.message); setLoading(false); return; }
+      resume_url = fname;
     }
-    const { error: dbErr } = await supabase.from("internship_applications").insert([{ ...form, resume_url, status:"Pending" }]);
+    const { data: savedApplication, error: dbErr } = await supabase.from("internship_applications").insert([{ ...form, name:form.name.trim(), email:form.email.trim().toLowerCase(), resume_url, status:"New" }]).select("id").single();
     if (dbErr) { setError("Failed: " + dbErr.message); setLoading(false); return; }
+    if (!savedApplication?.id) { setError("Submission could not be confirmed. Please try again."); setLoading(false); return; }
     setLoading(false);
     setSuccess(true);
   };
@@ -88,7 +91,7 @@ export default function CandidateInternship() {
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-10 text-center shadow-sm">
               <CheckCircle size={52} className="text-green-500 mx-auto mb-3"/>
               <h2 className="text-xl font-bold text-[#0F172A] mb-1">Application Submitted!</h2>
-              <p className="text-[#64748B] text-sm">We'll review your <span className="font-semibold text-[#0284C7]">{form.role}</span> application soon.</p>
+              <p className="text-[#64748B] text-sm">We&apos;ll review your <span className="font-semibold text-[#0284C7]">{form.role}</span> application soon.</p>
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-6">

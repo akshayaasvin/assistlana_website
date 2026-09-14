@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 
-const ADMIN_UID = "dd0b11eb-76c6-4afd-94b4-0d0845c85b5c";
+const ADMIN_UID = "67f399fc-0ce3-4589-b1b4-ef7de2541cda";
 
 function adminClient() {
   return createClient(

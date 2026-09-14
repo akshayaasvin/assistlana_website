@@ -10,7 +10,7 @@ import {
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-const ADMIN_UID  = "dd0b11eb-76c6-4afd-94b4-0d0845c85b5c";
+const ADMIN_UID  = "67f399fc-0ce3-4589-b1b4-ef7de2541cda";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const sb = createClient(supabaseUrl, anonKey);
@@ -245,6 +245,11 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+            <button onClick={() => router.push("/admin/internships")}
+              className="w-full rounded-xl border border-blue-200 bg-blue-50 p-4 text-left text-sm text-blue-900 transition-colors hover:bg-blue-100">
+              <span className="font-bold">{loading ? "…" : stats.internships}</span> internship application{stats.internships === 1 ? "" : "s"} received
+              <span className="ml-2 font-semibold underline">View applications →</span>
+            </button>
             {stats.pendingHR > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-yellow-800 text-sm font-medium">

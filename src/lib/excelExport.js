@@ -81,6 +81,38 @@ export function downloadInternshipExcel(applications, filename = "Internship_App
   saveAs(new Blob([buf], { type: "application/octet-stream" }), `${filename}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
+export function downloadInternshipApplicationsExcel(applications, filename = "Internship_Applications") {
+  const rows = internshipExportRows(applications);
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = [{ wch:24 },{ wch:30 },{ wch:18 },{ wch:28 },{ wch:22 },{ wch:15 },{ wch:28 },{ wch:42 },{ wch:16 },{ wch:22 },{ wch:42 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Internship Applications");
+  const buf = XLSX.write(wb, { bookType:"xlsx", type:"array" });
+  saveAs(new Blob([buf], { type:"application/octet-stream" }), `${filename}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+export function downloadInternshipApplicationsCsv(applications, filename = "Internship_Applications") {
+  const rows = internshipExportRows(applications);
+  const headers = Object.keys(rows[0] || { "Applicant Name":"", Email:"", Phone:"", College:"", Department:"", Year:"", "Internship Role":"", Message:"", Status:"", "Applied Date":"", "Resume Path":"" });
+  const escape = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const csv = [headers.map(escape).join(","), ...rows.map((row) => headers.map((header) => escape(row[header])).join(","))].join("\r\n");
+  saveAs(new Blob(["\uFEFF", csv], { type:"text/csv;charset=utf-8" }), `${filename}_${new Date().toISOString().slice(0,10)}.csv`);
+}
+
+function internshipExportRows(applications) {
+  return applications.map((app) => ({
+    "Applicant Name": app.name || "", Email:app.email || "", Phone:app.phone || "", College:app.college || "", Department:app.department || "", Year:app.year_of_study || "", "Internship Role":app.role || "", Message:app.message || "", Status:app.status || "", "Applied Date":app.applied_at ? new Date(app.applied_at).toLocaleString() : "", "Resume Path":storedResumePath(app.resume_url),
+  }));
+}
+
+function storedResumePath(value) {
+  if (!value) return "";
+  if (!value.startsWith("http")) return value;
+  const marker = "/internship-resumes/";
+  const index = value.indexOf(marker);
+  return index >= 0 ? decodeURIComponent(value.slice(index + marker.length).split("?")[0]) : "";
+}
+
 export function downloadHRUsersExcel(hrUsers, filename = "HR_Users") {
   const rows = hrUsers.map((u, i) => ({
     "S.No":         i + 1,

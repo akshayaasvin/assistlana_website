@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import {
   LayoutDashboard, Users, GraduationCap, Briefcase,
   Building2, Settings, LogOut, Menu, X, UserCheck
@@ -16,7 +17,7 @@ const NAV = [
   ]},
   { section: "CONTENT", items: [
     { label:"All Jobs",    icon: Briefcase,       href:"/admin/jobs"        },
-    { label:"Internships", icon: GraduationCap,   href:"/admin/internships" },
+    { label:"Internship Applications", icon: GraduationCap, href:"/admin/internships" },
   ]},
   { section: "SYSTEM", items: [
     { label:"Organizations",icon: Building2,      href:"/admin/orgs"        },
@@ -29,8 +30,9 @@ export default function AdminSidebar({ user }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("admin_user");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("adminAuth");
     router.push("/admin/login");
   };
 

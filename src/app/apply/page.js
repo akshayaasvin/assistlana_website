@@ -1,213 +1,40 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import PublicHeader from "@/components/shared/PublicHeader";
-import { Upload, CheckCircle, AlertCircle } from "lucide-react";
-import Link from "next/link";
+import { Upload, CheckCircle, AlertCircle, ArrowRight, BriefcaseBusiness, Code2 } from "lucide-react";
 
-const ROLES = [
-  "AI Product Developer",
-  "AI Agent Developer",
-  "Full Stack Developer",
-  "Frontend Developer",
-  "Backend Developer",
-  "Data Analyst",
-  "Data Scientist",
-  "Machine Learning Engineer",
-  "Python Developer",
-  "React Developer",
-  "UI/UX Designer",
-  "Digital Marketing",
-  "HR Recruiter",
-  "Business Development Executive",
-  "Graphic Designer",
-  "Video Editor",
-  "QA Tester",
-  "DevOps Engineer",
-  "Cloud Engineer",
-  "Cyber Security Analyst",
-  "Others",
-];
-
+const ROLES = ["AI Product Developer", "AI Agent Developer", "Full Stack Developer", "Frontend Developer", "Backend Developer", "Data Analyst", "Data Scientist", "Machine Learning Engineer", "Python Developer", "React Developer", "UI/UX Designer", "Digital Marketing", "HR Recruiter", "Business Development Executive", "Graphic Designer", "Video Editor", "QA Tester", "DevOps Engineer", "Cloud Engineer", "Cyber Security Analyst", "Others"];
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Final Year", "PG", "Fresher"];
 
 export default function InternshipApplyPage() {
-  const [form, setForm] = useState({
-    name:"", email:"", phone:"", college:"", department:"",
-    year_of_study:"", role:"", other_role:"", message:"",
-  });
-  const [file,    setFile]    = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error,   setError]   = useState("");
-
-  const set = (k, v) => setForm(p => ({ ...p, [k]:v }));
-
+  const [form, setForm] = useState({ name:"", email:"", phone:"", college:"", department:"", year_of_study:"", role:"", other_role:"", message:"" });
+  const [file, setFile] = useState(null); const [loading, setLoading] = useState(false); const [success, setSuccess] = useState(false); const [error, setError] = useState("");
+  const set = (key, value) => setForm(previous => ({ ...previous, [key]: value }));
+  const displayRole = form.role === "Others" && form.other_role ? form.other_role : form.role;
   const handleSubmit = async () => {
     setError("");
-    const required = ["name","email","phone","college","department","year_of_study","role"];
-    for (const k of required) {
-      if (!form[k]) { setError(`Please fill in: ${k.replace(/_/g," ")}`); return; }
-    }
-    if (form.role === "Others" && !form.other_role.trim()) {
-      setError("Please enter your preferred role."); return;
-    }
-    setLoading(true);
-
-    let resume_url = "";
-    if (file) {
+    for (const key of ["name","email","phone","college","department","year_of_study","role"]) if (!form[key]) return setError(`Please fill in: ${key.replace(/_/g," ")}`);
+    if (form.role === "Others" && !form.other_role.trim()) return setError("Please enter your preferred role.");
+    setLoading(true); let resume_url = "";
+    if (file) { if (file.type !== "application/pdf") { setError("Please upload a PDF resume."); setLoading(false); return; }
       if (file.size > 5 * 1024 * 1024) { setError("File too large (max 5MB)."); setLoading(false); return; }
-      const fname = `${Date.now()}_${file.name.replace(/\s/g,"_")}`;
-      const { error: upErr } = await supabase.storage.from("internship-resumes").upload(fname, file, { contentType: file.type });
-      if (!upErr) {
-        const { data } = supabase.storage.from("internship-resumes").getPublicUrl(fname);
-        resume_url = data.publicUrl;
-      }
+      const filename = `${crypto.randomUUID()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
+      const { error: uploadError } = await supabase.storage.from("internship-resumes").upload(filename, file, { contentType:file.type });
+      if (uploadError) { setError("Resume upload failed: " + uploadError.message); setLoading(false); return; }
+      // Store the object path, rather than a public URL. Admins receive a short-lived signed URL.
+      resume_url = filename;
     }
-
-    const finalRole = form.role === "Others" ? form.other_role.trim() : form.role;
-
-    const { error: dbErr } = await supabase.from("internship_applications").insert([{
-      name: form.name, email: form.email, phone: form.phone,
-      college: form.college, department: form.department,
-      year_of_study: form.year_of_study, role: finalRole,
-      message: form.message, resume_url, status: "Pending",
-    }]);
-
-    if (dbErr) { setError("Submission failed: " + dbErr.message); setLoading(false); return; }
-    setLoading(false);
-    setSuccess(true);
+    const { data: savedApplication, error: databaseError } = await supabase.from("internship_applications").insert([{ name:form.name.trim(), email:form.email.trim().toLowerCase(), phone:form.phone.trim(), college:form.college.trim(), department:form.department.trim(), year_of_study:form.year_of_study, role:form.role === "Others" ? form.other_role.trim() : form.role, message:form.message.trim(), resume_url, status:"New" }]).select("id").single();
+    if (databaseError) { setError("Submission failed: " + databaseError.message); setLoading(false); return; }
+    if (!savedApplication?.id) { setError("Submission could not be confirmed. Please try again."); setLoading(false); return; }
+    setLoading(false); setSuccess(true);
   };
-
-  const displayRole = form.role === "Others" && form.other_role ? form.other_role : form.role;
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
-        <PublicHeader/>
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-10 text-center max-w-md shadow-sm">
-            <CheckCircle size={56} className="text-green-500 mx-auto mb-4"/>
-            <h2 className="text-2xl font-extrabold text-[#0F172A] mb-2">Application Submitted!</h2>
-            <p className="text-[#64748B] text-sm mb-4">
-              We've received your application for the{" "}
-              <span className="font-semibold text-[#2563EB]">{displayRole}</span> internship.
-            </p>
-            <div className="bg-[#DCFCE7] text-[#16A34A] rounded-full px-4 py-1.5 text-sm font-semibold inline-block mb-6">
-              ✅ {displayRole} · Pending Review
-            </div>
-            <Link href="/"
-              className="block w-full py-2.5 bg-gradient-to-r from-[#2563EB] to-[#06B6D4] text-white rounded-xl font-semibold text-sm hover:opacity-90 text-center">
-              Back to Home
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
-      <PublicHeader/>
-
-      {/* Hero */}
-      <div className="bg-white border-b border-[#E2E8F0] py-10 px-4 text-center">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-[#0F172A] mb-2">
-          Launch Your Career with{" "}
-          <span className="bg-gradient-to-r from-[#2563EB] to-[#06B6D4] bg-clip-text text-transparent">
-            AssistLana AI
-          </span>
-        </h1>
-        <p className="text-[#64748B] text-sm mb-4">Real-world experience at Pondicherry's leading AI-HR tech company</p>
-        <div className="flex flex-wrap justify-center gap-3">
-          {["💰 Paid Stipend","🎓 Certificate","💼 Job Referral"].map(b => (
-            <span key={b} className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] px-4 py-1.5 rounded-full text-xs font-semibold">{b}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Form */}
-      <div className="flex-1 flex items-start justify-center py-10 px-4">
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-md p-8 w-full max-w-2xl">
-          <h2 className="text-xl font-bold text-[#0F172A] mb-6">Internship Application Form</h2>
-
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-5 text-sm">
-              <AlertCircle size={14}/>{error}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            {[
-              { label:"Full Name *",   key:"name",       type:"text",  ph:"Your full name" },
-              { label:"Email *",       key:"email",      type:"email", ph:"your@email.com" },
-              { label:"Phone *",       key:"phone",      type:"tel",   ph:"+91 9876543210" },
-              { label:"College *",     key:"college",    type:"text",  ph:"Your college name" },
-              { label:"Department *",  key:"department", type:"text",  ph:"e.g. B.E Computer Science" },
-            ].map(f => (
-              <div key={f.key}>
-                <label className="block text-sm font-semibold text-[#64748B] mb-1.5">{f.label}</label>
-                <input type={f.type} placeholder={f.ph} value={form[f.key]}
-                  onChange={e => set(f.key, e.target.value)}
-                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none transition-colors"/>
-              </div>
-            ))}
-
-            <div>
-              <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Year of Study *</label>
-              <select value={form.year_of_study} onChange={e => set("year_of_study", e.target.value)}
-                className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none bg-white text-[#0F172A] transition-colors">
-                <option value="">Select year...</option>
-                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Role dropdown */}
-          <div className="mb-4">
-            <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Job Role Selection *</label>
-            <select value={form.role} onChange={e => set("role", e.target.value)}
-              className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none bg-white text-[#0F172A] transition-colors">
-              <option value="">Select a role...</option>
-              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-
-          {/* Others textbox */}
-          {form.role === "Others" && (
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Preferred Role *</label>
-              <input
-                type="text"
-                placeholder="Enter your preferred role"
-                value={form.other_role}
-                onChange={e => set("other_role", e.target.value)}
-                className="w-full px-4 py-2.5 border border-[#2563EB] rounded-xl text-sm focus:border-[#2563EB] outline-none transition-colors bg-blue-50/30"/>
-            </div>
-          )}
-
-          <div className="mb-4">
-            <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Resume (PDF, max 5MB)</label>
-            <label className="flex items-center gap-3 border-2 border-dashed border-[#E2E8F0] rounded-xl px-4 py-3 cursor-pointer hover:border-[#2563EB] transition-all">
-              <Upload size={18} className="text-[#64748B]"/>
-              <span className="text-sm text-[#64748B]">{file ? file.name : "Click to upload PDF"}</span>
-              <input type="file" accept=".pdf" className="hidden" onChange={e => setFile(e.target.files[0])}/>
-            </label>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Why do you want this internship? (optional)</label>
-            <textarea placeholder="Tell us about your motivation and goals..." value={form.message}
-              onChange={e => set("message", e.target.value)} rows={3}
-              className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:border-[#2563EB] outline-none resize-none transition-colors"/>
-          </div>
-
-          <button onClick={handleSubmit} disabled={loading}
-            className="w-full bg-gradient-to-r from-[#2563EB] to-[#06B6D4] text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-60 hover:opacity-90 transition-all shadow-md shadow-blue-200">
-            {loading ? "Submitting..." : "Submit Application →"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  if (success) return <div className="min-h-screen bg-[#F8FAFC] flex flex-col"><PublicHeader/><div className="flex flex-1 items-center justify-center p-4"><div className="max-w-md rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm"><CheckCircle size={56} className="mx-auto mb-4 text-green-500"/><h1 className="text-2xl font-extrabold">Application submitted!</h1><p className="mt-3 text-sm text-slate-600">We received your application for the <span className="font-bold text-blue-700">{displayRole}</span> internship.</p><Link href="/" className="mt-7 block rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Back to home</Link></div></div></div>;
+  return <div className="min-h-screen bg-[#F8FAFC] flex flex-col"><PublicHeader/><main className="flex-1">
+    <section className="relative overflow-hidden bg-[#0b1930] px-4 py-16 text-white md:px-8 md:py-20"><div className="absolute inset-0 opacity-20" style={{ backgroundImage:"radial-gradient(rgba(255,255,255,.7) 1px, transparent 1px)", backgroundSize:"28px 28px" }}/><div className="relative mx-auto max-w-4xl text-center"><p className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-xs font-bold uppercase tracking-[.16em] text-cyan-200">ASSISTLANA internships</p><h1 className="mt-5 text-4xl font-black leading-tight md:text-5xl">Launch your career with real-world experience.</h1><p className="mx-auto mt-5 max-w-2xl leading-7 text-slate-300">Explore internship opportunities designed for students, freshers and aspiring professionals. Build practical skills, work on real projects and gain experience that strengthens your career.</p><div className="mt-7 flex flex-wrap justify-center gap-2">{["WORK FROM HOME OPPORTUNITIES", "OPPORTUNITIES ACROSS INDIA", "TECH + NON-TECH", "STUDENTS & FRESHERS"].map(item => <span key={item} className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold">{item}</span>)}</div><a href="#application" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-5 py-3.5 text-sm font-bold text-slate-950">Apply for Internship <ArrowRight size={16}/></a></div></section>
+    <section className="bg-white px-4 py-14 md:px-8"><div className="mx-auto max-w-6xl"><div className="text-center"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Choose a pathway</p><h2 className="mt-3 text-3xl font-black">Explore role areas, then apply.</h2><p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">These are role pathways, not active vacancy listings. Choose the role that best fits your interests in the application.</p></div><div className="mt-9 grid gap-4 md:grid-cols-2"><div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-6"><Code2 className="text-blue-600"/><h3 className="mt-5 font-extrabold">Technology pathways</h3><p className="mt-2 text-sm text-slate-600">AI Product Developer · Junior Data Scientist · Data Analyst Executive · Full Stack Developer</p></div><div className="rounded-2xl border border-teal-100 bg-teal-50/50 p-6"><BriefcaseBusiness className="text-teal-600"/><h3 className="mt-5 font-extrabold">Business pathways</h3><p className="mt-2 text-sm text-slate-600">Business Development Executive · Digital Marketing Executive · HR / Recruitment · Sales / Operations</p></div></div><div className="mt-10 grid grid-cols-3 gap-3 text-center text-xs font-bold text-slate-600 sm:grid-cols-6">{["Discover", "Choose a role", "Understand", "Apply", "Build experience", "Strengthen your resume"].map((step,index) => <div key={step} className="flex flex-col items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-blue-700">{index + 1}</span>{step}</div>)}</div></div></section>
+    <section id="application" className="px-4 py-12 md:px-8"><div className="mx-auto w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-md md:p-8"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Application</p><h2 className="mt-2 text-2xl font-black">Apply for Internship</h2><p className="mb-6 mt-2 text-sm text-slate-600">Tell us about yourself and the role pathway you want to explore.</p>{error && <div className="mb-5 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><AlertCircle size={15}/>{error}</div>}<div className="grid gap-4 sm:grid-cols-2">{[["Full Name *","name","text","Your full name"],["Email *","email","email","your@email.com"],["Phone *","phone","tel","+91 9876543210"],["College *","college","text","Your college name"],["Department *","department","text","e.g. Computer Science"]].map(([label,key,type,placeholder]) => <label key={key} className="text-sm font-semibold text-slate-600">{label}<input type={type} value={form[key]} placeholder={placeholder} onChange={e=>set(key,e.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-normal text-slate-900 outline-none focus:border-blue-600"/></label>)}<label className="text-sm font-semibold text-slate-600">Year of Study *<select value={form.year_of_study} onChange={e=>set("year_of_study",e.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-normal text-slate-900 outline-none focus:border-blue-600"><option value="">Select year...</option>{YEARS.map(year=><option key={year}>{year}</option>)}</select></label></div><label className="mt-4 block text-sm font-semibold text-slate-600">Role selection *<select value={form.role} onChange={e=>set("role",e.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-normal text-slate-900 outline-none focus:border-blue-600"><option value="">Select a role...</option>{ROLES.map(role=><option key={role}>{role}</option>)}</select></label>{form.role === "Others" && <label className="mt-4 block text-sm font-semibold text-slate-600">Preferred role *<input value={form.other_role} onChange={e=>set("other_role",e.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-blue-600"/></label>}<label className="mt-4 block text-sm font-semibold text-slate-600">Resume (PDF, max 5MB)<span className="mt-1.5 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-200 px-4 py-3 font-normal text-slate-500 hover:border-blue-500"><Upload size={18}/>{file ? file.name : "Click to upload PDF"}<input type="file" accept=".pdf" className="hidden" onChange={e=>setFile(e.target.files[0])}/></span></label><label className="mt-4 block text-sm font-semibold text-slate-600">Why do you want this internship? (optional)<textarea rows={3} value={form.message} onChange={e=>set("message",e.target.value)} className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-blue-600"/></label><button onClick={handleSubmit} disabled={loading} className="mt-6 w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 py-3.5 text-sm font-bold text-white shadow-md disabled:opacity-60">{loading ? "Submitting..." : "Submit Application"}</button></div></section>
+  </main></div>;
 }
