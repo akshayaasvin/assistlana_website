@@ -4,7 +4,7 @@ export function OrganizationSchema() {
     "@type": "Organization",
     "name": "ASSISTLANA",
     "url": "https://assistlana-website-6fzh.vercel.app",
-    "logo": "https://assistlana-website-6fzh.vercel.app/logo.png",
+    "logo": "https://assistlana.com/icon-512.png",
     "description": "AI-powered HR platform offering resume screening, mock interviews, job matching and internship opportunities across India.",
     "foundingDate": "2024",
     "areaServed": "IN",

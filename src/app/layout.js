@@ -419,6 +419,14 @@ export const metadata = {
 
   manifest: "/manifest.json",
 
+  icons: {
+    icon: [
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/icon-192.png", type: "image/png", sizes: "192x192" }],
+  },
+
   other: {
     "llms.txt": "/llms.txt",
   },
